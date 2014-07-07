@@ -1,0 +1,125 @@
+{
+	"airhood" : "Gullbergsvass",
+
+	// Kanske information om GPS för aktuellt område för att kunna markera på karta.
+
+	"timestamp" : "2014-06-06 10:31:01.850000",
+	
+	// Genomsnittligt värde baserat på alla mätare i aktuell hood.
+	"values" : {
+		"pm10" : 12.09,
+		"co" : 75.84,
+		"no2" : 7.27
+	},
+
+	"index" : 223,
+
+	// Lista med alla mätare i aktuellt hood och dess GPS och värden
+	"detailedValues" : [
+		{
+		"index": 233,
+		"co": 0,
+		"pm10": 33,
+		"sourceId": "GBG1",
+		"timestamp": "2014-06-06 10:31:07.690000",
+		"indexLabel": "GOOD",
+		"positionLabels": "---",
+		"position": "63.827743,20.256825",
+		"no2": 36
+		},
+		{
+		"index": 221,
+		"co": 0,
+		"pm10": 37,
+		"sourceId": "GBG2",
+		"timestamp": "2014-06-06 09:31:06.870000",
+		"indexLabel": "GOOD",
+		"positionLabels": "---",
+		"position": "63.827743,20.256825",
+		"no2": 35
+		}
+	],
+
+	//Historiskt data. Medelvärde per dag
+	"daylyHistory" : [
+		{
+			"date" : "2014-06-07",
+			"index" : 241,
+			"co": 0,
+			"pm10": 33,
+			"no2": 35
+		},
+		{
+			"date" : "2014-06-06",
+			"index" : 241,
+			"co": 0,
+			"pm10": 33,
+			"no2": 35
+		},
+		{
+			"date" : "2014-06-05",
+			"index" : 241,
+			"co": 0,
+			"pm10": 33,
+			"no2": 35
+		},
+		{
+			"date" : "2014-06-04",
+			"index" : 241,
+			"co": 0,
+			"pm10": 33,
+			"no2": 35
+		},
+		{
+			"date" : "2014-06-03",
+			"index" : 241,
+			"co": 0,
+			"pm10": 33,
+			"no2": 35
+		},
+		{
+			"date" : "2014-06-02",
+			"index" : 241,
+			"co": 0,
+			"pm10": 33,
+			"no2": 35
+		},
+		{
+			"date" : "2014-06-01",
+			"index" : 241,
+			"co": 0,
+			"pm10": 33,
+			"no2": 35
+		},
+		{
+			"date" : "2014-05-31",
+			"index" : 241,
+			"co": 0,
+			"pm10": 33,
+			"no2": 35
+		},
+		{
+			"date" : "2014-05-30",
+			"index" : 241,
+			"co": 0,
+			"pm10": 33,
+			"no2": 35
+		},
+		{
+			"date" : "2014-05-29",
+			"index" : 241,
+			"co": 0,
+			"pm10": 33,
+			"no2": 35
+		},
+		{
+			"date" : "2014-05-28",
+			"index" : 241,
+			"co": 0,
+			"pm10": 33,
+			"no2": 35
+		}
+
+	]
+
+}

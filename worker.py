@@ -12,8 +12,34 @@ from google.appengine.api import taskqueue
 from google.appengine.ext import db
 from random import randrange
 import datetime
+import csv
+import StringIO
+import json
+from google.appengine.ext import db
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
+
+
+class JsonProperty(db.TextProperty):
+	def validate(self, value):
+		return value
+
+	def get_value_for_datastore(self, model_instance):
+		result = super(JsonProperty, self).get_value_for_datastore(model_instance)
+		result = json.dumps(result)
+		return db.Text(result)
+
+	def make_value_from_datastore(self, value):
+		try:
+			value = json.loads(str(value))
+		except:
+			pass
+
+		return super(JsonProperty, self).make_value_from_datastore(value)
+
+class Report(db.Model):
+	name = db.StringProperty()
+	obj = JsonProperty()
 
 class Records(db.Model):
     """Models an individual Record entry with content and date."""
@@ -72,6 +98,18 @@ class Umea(webapp2.RequestHandler):
 		response = urllib2.urlopen(req, json.dumps(postdata))
 		self.response.write("OK")
 
+class Sthlm(webapp2.RequestHandler):
+	def get(self):
+		url = "http://slb.nu/cgi-bin/airweb.gifgraphic.cgi?format=txt&zmacro=lvf/air/timdatabas//lvf-kvavedioxd_flera.ic&from=130507&to=130508&path=/usr/airviro/data/sthlm/&lang=swe&rsrc=Halter.4.MainPage&st=lvf&regionPath="
+		response = urllib2.urlopen(url);
+		cr = csv.reader(response)
+		for row in cr:
+			print "z".join(row)
+			#for col in row:
+				#if col[:1] <> "#":
+					#print col
+
+
 class RegisterRecord(webapp2.RequestHandler):
     def post(self): # should run at most 1/s
 		# Only needs timestamp, pm10, co, no2, position and sourceId as input. 
@@ -93,5 +131,17 @@ class RegisterRecord(webapp2.RequestHandler):
 			sourceId=self.request.get('sourceId'),
 		)
 		rec.put()
+		
+		my_obj = {'key-1': 'value-1', 'key-2': 'value-2'}
+		entity = Report(name="hornstull", obj=my_obj)
+		entity.put()		
 
-app = webapp2.WSGIApplication([('/worker', RegisterRecord),('/gbg1', Goteborg),('/umea1', Umea)], debug=True)
+class Index(webapp2.RequestHandler):
+    def get(self):
+		template_values = {
+			'greetings': 'zxc',
+		}
+		template = JINJA_ENVIRONMENT.get_template('index.html')
+		self.response.write(template.render(template_values))
+
+app = webapp2.WSGIApplication([('/worker', RegisterRecord),('/gbg1', Goteborg),('/umea1', Umea),('/sthlm', Sthlm),('/index.html', Index)], debug=True)

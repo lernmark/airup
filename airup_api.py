@@ -18,7 +18,6 @@ import time
 package = 'Airup'
 
 
-
 class Record(messages.Message):
     """Record that stores a message."""
     timestamp = messages.StringField(1)
@@ -31,10 +30,20 @@ class Record(messages.Message):
     positionLabels = messages.StringField(8)
     sourceId = messages.StringField(9, required=True)
 
+class ReportMessage(messages.Message):
+    #name = db.StringProperty()
+    name = messages.StringField(1)
+    obj = messages.StringField(2)
+    #obj = JsonProperty()    
+
 
 class RecordCollection(messages.Message):
     """Collection of Records."""
-    records = messages.MessageField(Record, 1, repeated=True)    
+    records = messages.MessageField(Record, 1, repeated=True)
+
+class ReportCollection(messages.Message):
+    """Collection of Records."""
+    reports = messages.MessageField(ReportMessage, 1, repeated=True)
 
 class Records(db.Model):
     """Models an individual Record entry with content and date."""
@@ -48,9 +57,51 @@ class Records(db.Model):
     positionLabels = db.StringProperty()
     sourceId = db.StringProperty()
 
+class JsonProperty(db.TextProperty):
+    def validate(self, value):
+        return value
+
+    def get_value_for_datastore(self, model_instance):
+        result = super(JsonProperty, self).get_value_for_datastore(model_instance)
+        result = json.dumps(result)
+        return db.Text(result)
+
+    def make_value_from_datastore(self, value):
+        try:
+            value = json.loads(str(value))
+        except:
+            pass
+
+        return super(JsonProperty, self).make_value_from_datastore(value)
+
+class Report(db.Model):
+    name = db.StringProperty()
+    obj = JsonProperty()    
+
+
 @endpoints.api(name='airup', version='v1')
 class AirupApi(remote.Service):
     """Airup API v1."""
+
+
+
+    @endpoints.method(message_types.VoidMessage, ReportCollection,path='reports', http_method='GET',name='reports.listReports')
+    def report_list(self, unused_request):
+        #Return all stored reports
+
+        entities = Report.all()
+        entities = entities.fetch(10)
+        rep = []
+        for entity in entities:
+            #print entity.obj # outputs the dictionary object
+            rep.append(
+                ReportMessage(
+                    name=entity.name,
+                    obj=entity.obj
+                    )
+                )
+        STORED_REPORTS = ReportCollection(reports=rep)
+        return STORED_REPORTS
 
     @endpoints.method(message_types.VoidMessage, RecordCollection,path='records', http_method='GET',name='records.listRecords')
     def records_list(self, unused_request):
@@ -76,12 +127,11 @@ class AirupApi(remote.Service):
         return STORED_RECORDS
 
 
-
     MULTIPLY_METHOD_RESOURCE = endpoints.ResourceContainer(Record)
     @endpoints.method(MULTIPLY_METHOD_RESOURCE, Record, path='queueIt', http_method='POST', name='records.queueRecord')
     def records_queueRecord(self, request):
         """Use this method to post records"""
-        
+
         timestamp = request.timestamp
         if not timestamp:
             # now = datetime.datetime.now()
@@ -97,10 +147,10 @@ class AirupApi(remote.Service):
         position = request.position
         if not position:
             position = "52.37, 4.88"
-        
+
         #positionLabels = request.positionLabels
         sourceId = request.sourceId
-        
+
         taskqueue.add(queue_name='recordQueue', url='/worker', params={
             'sourceId': sourceId,
             'no2':no2,
