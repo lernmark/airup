@@ -14,9 +14,8 @@ from protorpc import message_types
 from protorpc import remote
 import datetime
 import time
-
+import json
 package = 'Airup'
-
 
 class Record(messages.Message):
     """Record that stores a message."""
@@ -30,12 +29,34 @@ class Record(messages.Message):
     positionLabels = messages.StringField(8)
     sourceId = messages.StringField(9, required=True)
 
-class ReportMessage(messages.Message):
-    #name = db.StringProperty()
-    name = messages.StringField(1)
-    obj = messages.StringField(2)
-    #obj = JsonProperty()    
+class TodayDetail(messages.Message):
+    index = messages.FloatField(1)
+    location = messages.StringField(2)
 
+class TodayType(messages.Message):
+    best = messages.MessageField(TodayDetail, 1, repeated=False)
+    worst = messages.MessageField(TodayDetail, 2, repeated=False)
+
+#required=True,variant=messages.Variant.INT32
+class ZoneDetail(messages.Message):
+    hood = messages.StringField(1)
+    index = messages.FloatField(2)
+    co = messages.FloatField(3)
+    no2 = messages.FloatField(4)
+    max24Hr = messages.FloatField(5)
+    min24Hr = messages.FloatField(6)
+    timestamp = messages.FloatField(7)
+    id = messages.FloatField(8)
+    hoodDescription = messages.StringField(9)
+
+class ZoneMessage(messages.Message):
+    key = messages.StringField(1)
+    zones = messages.MessageField(ZoneDetail, 2, repeated=True)
+    today = messages.MessageField(TodayType, 3, repeated=False)
+    timestamp = messages.FloatField(4)
+
+
+    #{"hood": "Hornstull", "min24Hr": "111", "timestamp": "1404916639.81", "max24Hr": "333", "no2": "33", "index": "222", "co": "22"}
 
 class RecordCollection(messages.Message):
     """Collection of Records."""
@@ -43,7 +64,7 @@ class RecordCollection(messages.Message):
 
 class ReportCollection(messages.Message):
     """Collection of Records."""
-    reports = messages.MessageField(ReportMessage, 1, repeated=True)
+    reports = messages.MessageField(ZoneMessage, 1, repeated=True)
 
 class Records(db.Model):
     """Models an individual Record entry with content and date."""
@@ -76,14 +97,12 @@ class JsonProperty(db.TextProperty):
 
 class Report(db.Model):
     name = db.StringProperty()
-    obj = JsonProperty()    
+    report = JsonProperty()    
 
 
 @endpoints.api(name='airup', version='v1')
 class AirupApi(remote.Service):
     """Airup API v1."""
-
-
 
     @endpoints.method(message_types.VoidMessage, ReportCollection,path='reports', http_method='GET',name='reports.listReports')
     def report_list(self, unused_request):
@@ -95,9 +114,9 @@ class AirupApi(remote.Service):
         for entity in entities:
             #print entity.obj # outputs the dictionary object
             rep.append(
-                ReportMessage(
+                ZoneMessage(
                     name=entity.name,
-                    obj=entity.obj
+                    report=entity.report
                     )
                 )
         STORED_REPORTS = ReportCollection(reports=rep)
@@ -168,7 +187,6 @@ class AirupApi(remote.Service):
         # return Record(timestamp=request.timestamp, pm10=request.pm10)
 
     ID_RESOURCE = endpoints.ResourceContainer(message_types.VoidMessage,id=messages.IntegerField(1, variant=messages.Variant.INT32))
-
     @endpoints.method(ID_RESOURCE, Record,path='record/{id}', http_method='GET',name='records.getRecord')
     def record_get(self, request):
         try:
@@ -176,5 +194,47 @@ class AirupApi(remote.Service):
         except (IndexError, TypeError):
             raise endpoints.NotFoundException('Record %s not found.' %
                                               (request.id,))
+
+
+    ID_RESOURCE2 = endpoints.ResourceContainer(message_types.VoidMessage,id=messages.StringField(1, variant=messages.Variant.STRING))
+    @endpoints.method(ID_RESOURCE2, ZoneMessage,path='report/{id}', http_method='GET',name='report.getReport')
+    def report_get(self, request):
+        try:
+            r = db.GqlQuery("SELECT * FROM Report WHERE name='" + request.id + "'")
+            #my_dict = {'amount': '31', 'type': 'fish'}
+            #print r[0].report
+            return ZoneMessage(
+                key=request.id,
+                timestamp=float(time.time()),
+                today= TodayType(best=TodayDetail(index=13.0, location="Antartica"), worst=TodayDetail(index=425.0, location="Beijing")),
+
+                zones = [
+                    ZoneDetail(id=1111.0,hood='Hornstull',hoodDescription='Stockholm, Sweden',index=34.0,co=33.0,no2=122.0,min24Hr=13.0,max24Hr=77.0,timestamp=float(time.time())),
+                    ZoneDetail(id=3333.0,hood='Chueca',hoodDescription='Madrid, Spain',index=62.0,co=44.0,no2=102.0,min24Hr=30.0,max24Hr=80.0,timestamp=float(time.time())),
+                    ZoneDetail(id=4444.0,hood='Mitte',hoodDescription='Berlin, Germany',index=40.0,co=22.0,no2=98.0,min24Hr=35.0,max24Hr=79.0,timestamp=float(time.time())),
+                    ZoneDetail(id=5555.0,hood='Harajuku',hoodDescription='Tokyo, Japan',index=54.0,co=66.0,no2=77.0,min24Hr=23.0,max24Hr=122.0,timestamp=float(time.time())),
+                    ZoneDetail(id=2222.0,hood='Park Slope',hoodDescription='New York, USA',index=101.0,co=77.0,no2=140.0,min24Hr=76.0,max24Hr=89.0,timestamp=float(time.time()))
+                    ]
+                )            
+        except (IndexError, TypeError):
+            raise endpoints.NotFoundException('Report %s not found.' %
+                                              (request.id,))
+
+    LATLONG_RESOURCE = endpoints.ResourceContainer(message_types.VoidMessage,lat=messages.StringField(1, variant=messages.Variant.STRING),long=messages.StringField(2, variant=messages.Variant.STRING))
+    @endpoints.method(LATLONG_RESOURCE, ZoneDetail, path='location/lat/{lat}/long/{long}', http_method='GET', name='report.getLocation')
+    def location_get(self, request):
+        return ZoneDetail(id=1111.0,hood='Hornstull',hoodDescription='Stockholm, Sweden',index=34.0,co=33.0,no2=122.0,min24Hr=13.0,max24Hr=77.0,timestamp=float(time.time()))
+
+
+    LOCATIONS_RESOURCE = endpoints.ResourceContainer(message_types.VoidMessage,zone=messages.FloatField(1,repeated=True))
+    @endpoints.method(LOCATIONS_RESOURCE, ZoneMessage, path='zones', http_method='GET', name='report.getZones')
+    def locations_get(self, request):
+        for loc in request.zone:
+            print loc
+        return ZoneMessage()
+
+
+
+
 
 APPLICATION = endpoints.api_server([AirupApi])

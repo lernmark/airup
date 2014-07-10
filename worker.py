@@ -17,8 +17,11 @@ import StringIO
 import json
 from google.appengine.ext import db
 
+
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
 
+class AirReport(): pass
+class HoodReport(): pass
 
 class JsonProperty(db.TextProperty):
 	def validate(self, value):
@@ -26,7 +29,8 @@ class JsonProperty(db.TextProperty):
 
 	def get_value_for_datastore(self, model_instance):
 		result = super(JsonProperty, self).get_value_for_datastore(model_instance)
-		result = json.dumps(result)
+		#result = json.dumps(result)
+		result = json.dumps(result, default=lambda o: o.__dict__)
 		return db.Text(result)
 
 	def make_value_from_datastore(self, value):
@@ -39,7 +43,7 @@ class JsonProperty(db.TextProperty):
 
 class Report(db.Model):
 	name = db.StringProperty()
-	obj = JsonProperty()
+	report = JsonProperty()
 
 class Records(db.Model):
     """Models an individual Record entry with content and date."""
@@ -131,9 +135,20 @@ class RegisterRecord(webapp2.RequestHandler):
 			sourceId=self.request.get('sourceId'),
 		)
 		rec.put()
-		
-		my_obj = {'key-1': 'value-1', 'key-2': 'value-2'}
-		entity = Report(name="hornstull", obj=my_obj)
+
+		airReport = AirReport()
+		airReport.hood = "Hornstull"
+		airReport.timestamp = self.request.get('timestamp')
+
+		airReport.hood = "Hornstull"
+		airReport.index = "222"
+		airReport.max24Hr = "333"
+		airReport.min24Hr = "111"
+		airReport.co = "22"
+		airReport.no2 = "33"
+
+
+		entity = Report(name=self.request.get('sourceId'), report=airReport)
 		entity.put()		
 
 class Index(webapp2.RequestHandler):
