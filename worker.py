@@ -45,6 +45,20 @@ class Report(db.Model):
 	name = db.StringProperty()
 	report = JsonProperty()
 
+
+class ZoneDetailPersist(db.Model):
+    """Models an individual Record entry with content and date."""
+    timestamp = db.DateTimeProperty()
+    title = db.StringProperty()
+    subtitle = db.StringProperty()
+    max24Hr = db.FloatProperty()
+    min24Hr = db.FloatProperty()
+    co = db.FloatProperty()
+    no2 = db.FloatProperty()
+    index = db.FloatProperty()
+    #id = db.FloatProperty()
+
+
 class Records(db.Model):
     """Models an individual Record entry with content and date."""
     timestamp = db.DateTimeProperty()
@@ -136,20 +150,20 @@ class RegisterRecord(webapp2.RequestHandler):
 		)
 		rec.put()
 
-		airReport = AirReport()
-		airReport.hood = "Hornstull"
-		airReport.timestamp = self.request.get('timestamp')
 
-		airReport.hood = "Hornstull"
-		airReport.index = "222"
-		airReport.max24Hr = "333"
-		airReport.min24Hr = "111"
-		airReport.co = "22"
-		airReport.no2 = "33"
-
-
-		entity = Report(name=self.request.get('sourceId'), report=airReport)
-		entity.put()		
+class RegisterZone(webapp2.RequestHandler):
+	def post(self): # should run at most 1/s
+		r = ZoneDetailPersist(
+			timestamp=datetime.datetime.fromtimestamp(float(self.request.get('timestamp'))),
+			co=float(self.request.get('co')),
+			no2=float(self.request.get('no2')),
+			index=float(self.request.get('index')),
+			max24Hr=float(self.request.get('max24Hr')),
+			min24Hr=float(self.request.get('min24Hr')),
+			title=self.request.get('title'),
+			subtitle=self.request.get('subtitle')
+		)
+		r.put()
 
 class Index(webapp2.RequestHandler):
     def get(self):
@@ -159,4 +173,4 @@ class Index(webapp2.RequestHandler):
 		template = JINJA_ENVIRONMENT.get_template('index.html')
 		self.response.write(template.render(template_values))
 
-app = webapp2.WSGIApplication([('/worker', RegisterRecord),('/gbg1', Goteborg),('/umea1', Umea),('/sthlm', Sthlm),('/index.html', Index)], debug=True)
+app = webapp2.WSGIApplication([('/worker', RegisterRecord),('/zoneWworker', RegisterZone),('/gbg1', Goteborg),('/umea1', Umea),('/sthlm', Sthlm),('/index.html', Index)], debug=True)
