@@ -105,9 +105,9 @@ class Umea(webapp2.RequestHandler):
 		co = 0
 		postdata = {
 			'sourceId':'UMEA1',
-			'no2':str(no2),
+			'no2':str(((no2/1000)*24.45)/46.01),
 			'pm10':str(pm10),
-			'co':str(co),
+			'co':str(((co/1000)*24.45)/28.01),
 			'position':'63.827743,20.256825',
 		}
 		req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
