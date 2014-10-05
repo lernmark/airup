@@ -73,7 +73,7 @@ class Records(db.Model):
 
 class Goteborg(webapp2.RequestHandler):
     def get(self):
-		logging.info("OK")
+		#logging.info("OK")
 		url = "http://data.goteborg.se/AirQualityService/v1.0/LatestMeasurement/4abad3dd-5d24-4c9c-9d17-79a946abe6c2?format=json"
 		response = urllib2.urlopen(url);
 		data = json.loads(response.read())
@@ -95,7 +95,7 @@ class Goteborg(webapp2.RequestHandler):
 
 class Umea(webapp2.RequestHandler):
     def get(self):
-		logging.info("OK")
+		#logging.info("OK")
 		url = "http://ckan.openumea.se/api/action/datastore_search?resource_id=27fb8bcc-23cb-4e85-b5b4-fde68a8ef93a&limit=1&sort=M%C3%A4ttidpunkt%20desc"
 		response = urllib2.urlopen(url);
 		data = json.loads(response.read())
