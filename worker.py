@@ -103,8 +103,8 @@ class Umea(webapp2.RequestHandler):
 		pm10 = data['result']['records'][0]['PM10']
 		no2 = data['result']['records'][0]['NO2']
 		co = 0
-		logging.info("UMEA-NO2: " + str(no2))
-		logging.info("UMEA-CO: " + str(co))
+		logging.info("UMEA-NO2: " + str(((no2/1000)*24.45)/46.01))
+		logging.info("UMEA-CO: " + str(((co/1000)*24.45)/28.01))
 		postdata = {
 			'sourceId':'UMEA1',
 			'no2':str(((no2/1000)*24.45)/46.01),
@@ -134,6 +134,7 @@ class RegisterRecord(webapp2.RequestHandler):
     def post(self): # should run at most 1/s
 		# Only needs timestamp, pm10, co, no2, position and sourceId as input. 
 		# The rest should be calculated here.
+		logging.info("UMEA-NO2 Z: " + self.request.get('no2'))
 		rec = Records(
 			# timestamp=float(self.request.get('timestamp')),
 			timestamp=datetime.datetime.fromtimestamp(float(self.request.get('timestamp'))),
