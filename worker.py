@@ -95,7 +95,7 @@ class Goteborg(webapp2.RequestHandler):
 
 class Umea(webapp2.RequestHandler):
     def get(self):
-		#logging.info("OK")
+		logging.info("UMEA")
 		url = "http://ckan.openumea.se/api/action/datastore_search?resource_id=27fb8bcc-23cb-4e85-b5b4-fde68a8ef93a&limit=1&sort=M%C3%A4ttidpunkt%20desc"
 		response = urllib2.urlopen(url);
 		data = json.loads(response.read())
@@ -103,6 +103,9 @@ class Umea(webapp2.RequestHandler):
 		pm10 = data['result']['records'][0]['PM10']
 		no2 = data['result']['records'][0]['NO2']
 		co = 0
+		# Transform µg/m3 => PPM
+		logging.info("UMEA-NO2: " + no2)
+		logging.info("UMEA-CO: " + co)
 		postdata = {
 			'sourceId':'UMEA1',
 			'no2':str(((no2/1000)*24.45)/46.01),
