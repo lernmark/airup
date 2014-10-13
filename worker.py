@@ -103,9 +103,8 @@ class Umea(webapp2.RequestHandler):
 		pm10 = data['result']['records'][0]['PM10']
 		no2 = data['result']['records'][0]['NO2']
 		co = 0
-		# Transform µg/m3 => PPM
-		logging.info("UMEA-NO2: " + no2)
-		logging.info("UMEA-CO: " + co)
+		logging.info("UMEA-NO2: " + str(no2))
+		logging.info("UMEA-CO: " + str(co))
 		postdata = {
 			'sourceId':'UMEA1',
 			'no2':str(((no2/1000)*24.45)/46.01),
