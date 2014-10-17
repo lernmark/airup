@@ -16,7 +16,6 @@ def index(table, v, fac):
 	return int(index)
 
 def aqi(values):
-	print "---------------------------------"
 	co=values["co"]
 	pm10=values["pm10"]
 	no2=values["no2"]
@@ -29,24 +28,24 @@ def aqi(values):
 	if co:
 		coIndex = index(tableCo, co, 10)
 		f = f+1
-		print coIndex
+		#print coIndex
 
 	if pm10:
 		pm10Index = index(tablePm10, pm10, 1)
 		f = f+1
-		print pm10Index
+		#print pm10Index
 
 	if no2:
 		no2Index = index(tableNo2, no2, 1000)
 		f = f+1
-		print no2Index
+		#print no2Index
 
 	if f > 0:
 		return (coIndex+pm10Index+no2Index)/f
 
 
 
-print "-------- CO ---------"
+#print "-------- CO ---------"
 # kan vara mellan 0 - 50 ppm
 index(tableCo, 3.5, 10)
 index(tableCo, 2, 10)
@@ -60,7 +59,7 @@ index(tableCo, 5.7, 10)
 index(tableCo, 6, 10)
 index(tableCo, 8.4, 10)
 
-print "-------- pm10 ---------"
+#print "-------- pm10 ---------"
 # Kan vara mellan 0 - 600
 index(tablePm10, 20, 1)
 index(tablePm10, 30, 1)
@@ -73,19 +72,19 @@ index(tablePm10, 90, 1)
 index(tablePm10, 100, 1)
 index(tablePm10, 210, 1)
 
-print "-------- no2 ---------"
+#print "-------- no2 ---------"
 # Kan vara mellan 0 - 2
 #print tableNo2
 index(tableNo2, 0.033, 1000)
 index(tableNo2, 1.823, 1000)
 index(tableNo2, 1.930, 1000)
 #print index(tableNo2, 2.039, 1000)
-
-
-print aqi({"co":50,"pm10":600,"no2":2})
-print aqi({"co":25,"pm10":None,"no2":1.123})
-print aqi({"co":4.123,"pm10":None,"no2":0.024})
-#print aqi(25,300,1)
-#print aqi(4,50,0.02)
-
-
+#print aqi({"co":50,"pm10":600,"no2":2})
+#print aqi({"co":25,"pm10":None,"no2":1.123})
+#print aqi({"co":4.123,"pm10":None,"no2":0.024})
+#NO2 30.37 ug/m3
+#CO 2.73 ug/m3
+#PM10 10.71 ug/m3
+#'no2':str(((no2/1000)*24.45)/46.01),
+#'co':str(((co/1000)*24.45)/28.01),
+print aqi({"co":(((45.02/1000.00000)*24.45000)/28.01000),"pm10":10.710,"no2":(((63.45/1000.00000)*24.45000)/46.01000)})

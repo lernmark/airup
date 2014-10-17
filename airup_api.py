@@ -254,9 +254,11 @@ class AirupApi(remote.Service):
         pm10 = request.pm10
         co = request.co
         no2 = request.no2
-        #ttt = datetime.datetime.now()
-        index = aqi({"co":co,"pm10":pm10,"no2":2})
-        #indexLabel = request.indexLabel
+
+        index = aqi({"co":co,"pm10":pm10,"no2":no2})
+
+        logging.info("Index: " + index)
+
         position = request.position
         if not position:
             position = "52.37, 4.88"
@@ -270,6 +272,7 @@ class AirupApi(remote.Service):
             'pm10':pm10,
             'co':co,
             'timestamp':timestamp,
+            'index':index,
             'position':position
             })
         return Record(timestamp=request.timestamp,position=request.position,sourceId=request.sourceId)

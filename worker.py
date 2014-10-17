@@ -20,6 +20,7 @@ from google.appengine.ext import db
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
 
+
 class AirReport(): pass
 class HoodReport(): pass
 
@@ -72,26 +73,41 @@ class Records(db.Model):
     sourceId = db.StringProperty()
 
 class Goteborg(webapp2.RequestHandler):
+
     def get(self):
-		#logging.info("OK")
+		self.response.write("OK GBG start")
 		url = "http://data.goteborg.se/AirQualityService/v1.0/LatestMeasurement/4abad3dd-5d24-4c9c-9d17-79a946abe6c2?format=json"
 		response = urllib2.urlopen(url);
 		data = json.loads(response.read())
-		pm10 = data['AirQuality']['PM10']['Value']
-		no2 = data['AirQuality']['NOx']['Value']
-		co = data['AirQuality']['CO']['Value']
-		postdata = {
-			'sourceId':'GBG1',
-			'no2':str(no2),
-			'pm10':str(pm10),
-			'co':str(co),
-			'position':'57.708870,11.974560',
-		}
+		postdata = {}
+		try:
+			pm10 = data['AirQuality']['PM10']['Value']
+			postdata['pm10'] = str(pm10)
+		except Exception, e:
+			pm10 = 0
+
+		try:
+			no2 = data['AirQuality']['NO2']['Value']
+			postdata['no2'] = str(((no2/1000.0000)*24.4500)/46.0100) #Convert mg/m3 to ppm
+		except Exception, e:
+			no2 = 0		
+
+		try:
+			co = data['AirQuality']['CO']['Value']
+			postdata['co'] = str(((co/1000.0000)*24.4500)/28.0100) #Convert mg/m3 to ppm
+		except Exception, e:
+			co = 0
+		
+		postdata['sourceId'] = 'GBG1'
+		postdata['position'] = '57.708870,11.974560'
+
+		self.response.write(postdata)
+
 		req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
 		#req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
 		req.add_header('Content-Type', 'application/json')
 		response = urllib2.urlopen(req, json.dumps(postdata))
-		self.response.write("OK")
+
 
 class Umea(webapp2.RequestHandler):
     def get(self):
@@ -99,24 +115,28 @@ class Umea(webapp2.RequestHandler):
 		url = "http://ckan.openumea.se/api/action/datastore_search?resource_id=27fb8bcc-23cb-4e85-b5b4-fde68a8ef93a&limit=1&sort=M%C3%A4ttidpunkt%20desc"
 		response = urllib2.urlopen(url);
 		data = json.loads(response.read())
-		print data['result']['records'][0]['PM10']
-		pm10 = data['result']['records'][0]['PM10']
-		no2 = data['result']['records'][0]['NO2']
-		co = 0
-		logging.info("UMEA-NO2: " + str(((no2/1000)*24.45)/46.01))
-		logging.info("UMEA-CO: " + str(((co/1000)*24.45)/28.01))
-		postdata = {
-			'sourceId':'UMEA1',
-			'no2':str(((no2/1000)*24.45)/46.01),
-			'pm10':str(pm10),
-			'co':str(((co/1000)*24.45)/28.01),
-			'position':'63.827743,20.256825',
-		}
+
+		postdata = {}
+		try:
+			pm10 = data['result']['records'][0]['PM10']
+			postdata['pm10'] = str(float(pm10))
+		except Exception, e:
+			pm10 = 0
+
+		try:
+			no2 = data['result']['records'][0]['NO2']
+			postdata['no2'] = str(((no2/1000.0000)*24.4500)/46.0100) #Convert mg/m3 to ppm
+		except Exception, e:
+			no2 = 0		
+
+		postdata['sourceId'] = 'UMEA1'
+		postdata['position'] = '63.827743,20.256825'
+
 		req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
 		#req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
 		req.add_header('Content-Type', 'application/json')
 		response = urllib2.urlopen(req, json.dumps(postdata))
-		self.response.write("OK")
+		self.response.write(postdata)
 
 class Sthlm(webapp2.RequestHandler):
 	def get(self):
@@ -142,7 +162,7 @@ class RegisterRecord(webapp2.RequestHandler):
 			co=float(self.request.get('co')),
 			no2=float(self.request.get('no2')),
 			# The index should be calculated here
-			index=0,
+			index=int(self.request.get('index')),
 			indexLabel='GOOD',
 
 			# TODO: Do a lookup to google
