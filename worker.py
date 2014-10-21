@@ -73,6 +73,40 @@ class Records(db.Model):
     positionLabels = db.StringProperty()
     sourceId = db.StringProperty()
 
+class Hamburg1(webapp2.RequestHandler):
+	#http://hamburg.luftmessnetz.de/station/68HB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday
+	def get(self):
+		# Data from http://luft.hamburg.de/
+		#http://hamburg.luftmessnetz.de/station/68HB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday
+		url = "http://hamburg.luftmessnetz.de/station/70MB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday"
+		response = urllib2.urlopen(url);
+		cr = csv.reader(response)
+		postdata = {}
+		rlista = list(cr)[5]
+		co = rlista[1]
+
+		try:
+			co = rlista[1]
+			postdata['co'] = str(((float(co))*24.4500)/28.0100) #Convert mg/m3 to ppm
+		except Exception, e:
+			print "No co"
+
+		try:
+			no2 = rlista[3]
+			postdata['no2'] = str(((float(no2)/1000.0000)*24.4500)/46.0100) #Convert mg/m3 to ppm
+		except Exception, e:
+			print "No no2"
+
+		postdata['sourceId'] = 'Hamburg1'
+		postdata['position'] = '53.555555,9.943407'
+		
+		req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
+		req.add_header('Content-Type', 'application/json')
+		response = urllib2.urlopen(req, json.dumps(postdata))
+
+		self.response.write("<br/><code>DONE Hamburg1<code><br/>")
+		
+		
 class Goteborg(webapp2.RequestHandler):
 
     def get(self):
@@ -183,25 +217,18 @@ def aqi(values):
     pm10Index = 0
     no2Index = 0
 
-    try:
-        coIndex = index(tableCo, float(co), 10)
-        f = f+1
-    except Exception, e:
-    	print e
+    if ast.literal_eval(co) is not None:
+		coIndex = index(tableCo, float(co), 10)
+		f = f+1
 
-    try:
-        pm10Index = index(tablePm10, float(pm10), 1)
-        f = f+1
-    except Exception, e:
-    	print e
-	
-    try:
-        no2Index = index(tableNo2, float(no2), 1)
-        f = f+1
-    except Exception, e:
-    	print e
-		
-	
+    if ast.literal_eval(pm10) is not None:
+    	pm10Index = index(tablePm10, float(pm10), 1)
+    	f = f+1
+
+    if ast.literal_eval(no2) is not None:
+    	no2Index = index(tableNo2, float(no2), 1)
+    	f = f+1
+
     if f > 0:
         return float((coIndex+pm10Index+no2Index)/f)
 
@@ -271,4 +298,4 @@ class Index(webapp2.RequestHandler):
 		template = JINJA_ENVIRONMENT.get_template('index.html')
 		self.response.write(template.render(template_values))
 
-app = webapp2.WSGIApplication([('/worker', RegisterRecord),('/zoneWworker', RegisterZone),('/gbg1', Goteborg),('/umea1', Umea),('/sthlm', Sthlm),('/index.html', Index)], debug=True)
+app = webapp2.WSGIApplication([('/worker', RegisterRecord),('/zoneWworker', RegisterZone),('/gbg1', Goteborg),('/umea1', Umea),('/hamburg1', Hamburg1),('/sthlm', Sthlm),('/index.html', Index)], debug=True)
