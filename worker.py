@@ -3,6 +3,7 @@
 # Copyright 2007 Google Inc.
 #
 import os
+import ast
 import logging
 import jinja2
 import webapp2
@@ -66,7 +67,7 @@ class Records(db.Model):
     pm10 = db.FloatProperty()
     co = db.FloatProperty()
     no2 = db.FloatProperty()
-    index = db.IntegerProperty()
+    index = db.FloatProperty()
     indexLabel = db.StringProperty()
     position = db.GeoPtProperty()
     positionLabels = db.StringProperty()
@@ -84,27 +85,30 @@ class Goteborg(webapp2.RequestHandler):
 			pm10 = data['AirQuality']['PM10']['Value']
 			postdata['pm10'] = str(pm10)
 		except Exception, e:
-			pm10 = 0
+			print "no pm10"
+			#postdata['pm10'] = 0
 
 		try:
 			no2 = data['AirQuality']['NO2']['Value']
 			postdata['no2'] = str(((no2/1000.0000)*24.4500)/46.0100) #Convert mg/m3 to ppm
 		except Exception, e:
-			no2 = 0		
+			print "No no2"
+			#postdata['no2'] = 0		
 
 		try:
 			co = data['AirQuality']['CO']['Value']
 			postdata['co'] = str(((co/1000.0000)*24.4500)/28.0100) #Convert mg/m3 to ppm
 		except Exception, e:
-			co = 0
+			print "No co"
+			#postdata['co'] = 0
 		
 		postdata['sourceId'] = 'GBG1'
 		postdata['position'] = '57.708870,11.974560'
-
+		
 		self.response.write(postdata)
 
-		req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
-		#req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
+		#req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
+		req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
 		req.add_header('Content-Type', 'application/json')
 		response = urllib2.urlopen(req, json.dumps(postdata))
 
@@ -132,8 +136,8 @@ class Umea(webapp2.RequestHandler):
 		postdata['sourceId'] = 'UMEA1'
 		postdata['position'] = '63.827743,20.256825'
 
-		req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
-		#req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
+		#req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
+		req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
 		req.add_header('Content-Type', 'application/json')
 		response = urllib2.urlopen(req, json.dumps(postdata))
 		self.response.write(postdata)
@@ -150,24 +154,95 @@ class Sthlm(webapp2.RequestHandler):
 					#print col
 
 
+tableAqiIndex = [ range(0, 50, 1),range(51, 100, 1),range(101, 150, 1),range(151, 200, 1),range(201, 300, 1),range(301, 400, 1),range(401, 500, 1) ]
+tableCo = [ range(0, 44, 1),range(45, 94, 1),range(95, 124, 1),range(125, 154, 1),range(155, 304, 1),range(305, 404, 1),range(405, 504, 1) ] 
+tableNo2 = [ range(0, 53, 1),range(54, 100, 1),range(101, 360, 1),range(361, 640, 1),range(650, 1240, 1),range(1250, 1640, 1),range(1650, 2040, 1) ] 
+tablePm10 = [ range(0, 54, 1),range(55, 154, 1),range(155, 254, 1),range(255, 354, 1),range(355, 424, 1),range(425, 504, 1),range(505, 604, 1) ] 
+
+def index(table, v, fac):
+
+    row = [i for i,l in enumerate(table) if int(v*fac) in l][0]
+    bpLow = float(table[row][0])/fac
+    bpHigh = (float(table[row][len(table[row])-1]+1)/fac)
+    iLow = tableAqiIndex[row][0]
+    iHigh = tableAqiIndex[row][len(tableAqiIndex[row])-1]+1
+    index = (
+        (float(iHigh) - float(iLow)) / 
+        (float(bpHigh) - float(bpLow))
+        ) * (float(v)-(float(bpLow))) + float(iLow)
+    return int(index)
+
+def aqi(values):
+
+    co=values["co"]
+    pm10=values["pm10"]
+    no2=values["no2"]
+
+    f = 0
+    coIndex = 0
+    pm10Index = 0
+    no2Index = 0
+
+    try:
+        coIndex = index(tableCo, float(co), 10)
+        f = f+1
+    except Exception, e:
+    	print e
+
+    try:
+        pm10Index = index(tablePm10, float(pm10), 1)
+        f = f+1
+    except Exception, e:
+    	print e
+	
+    try:
+        no2Index = index(tableNo2, float(no2), 1)
+        f = f+1
+    except Exception, e:
+    	print e
+		
+	
+    if f > 0:
+        return float((coIndex+pm10Index+no2Index)/f)
+
+
 class RegisterRecord(webapp2.RequestHandler):
     def post(self): # should run at most 1/s
 		# Only needs timestamp, pm10, co, no2, position and sourceId as input. 
 		# The rest should be calculated here.
-		logging.info("UMEA-NO2 Z: " + self.request.get('no2'))
+		pm10=self.request.get('pm10')
+		co=self.request.get('co')
+		no2=self.request.get('no2')
+
+		index=aqi({"co":co,"pm10":pm10,"no2":no2})
+		
+		if ast.literal_eval(co) is None:
+			co = None
+		else:
+			co = float(co)
+
+		if ast.literal_eval(pm10) is None:
+			pm10 = None
+		else:
+			pm10 = float(pm10)
+
+		if ast.literal_eval(no2) is None:
+			no2 = None
+		else:
+			no2 = float(no2)
+		
 		rec = Records(
 			# timestamp=float(self.request.get('timestamp')),
 			timestamp=datetime.datetime.fromtimestamp(float(self.request.get('timestamp'))),
-			pm10=float(self.request.get('pm10')),
-			co=float(self.request.get('co')),
-			no2=float(self.request.get('no2')),
+			pm10=pm10,
+			co=co,
+			no2=no2,
 			# The index should be calculated here
-			index=int(self.request.get('index')),
+			#index=self.request.get('index'),
+			index=index,
 			indexLabel='GOOD',
-
 			# TODO: Do a lookup to google
 			position=self.request.get('position'),
-
 			positionLabels="---",
 			sourceId=self.request.get('sourceId'),
 		)
