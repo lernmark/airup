@@ -111,7 +111,7 @@ class Hamburg1(webapp2.RequestHandler):
 class Goteborg(webapp2.RequestHandler):
 
     def get(self):
-		self.response.write("OK GBG start")
+		self.response.write("GBG start")
 		url = "http://data.goteborg.se/AirQualityService/v1.0/LatestMeasurement/4abad3dd-5d24-4c9c-9d17-79a946abe6c2?format=json"
 		response = urllib2.urlopen(url);
 		data = json.loads(response.read())
