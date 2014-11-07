@@ -7,7 +7,7 @@ as well as those methods defined in an API.
 
 import logging
 import endpoints
-import urllib
+import urllib2
 from google.appengine.ext import db
 from google.appengine.api import taskqueue
 from google.appengine.api import urlfetch
@@ -55,6 +55,12 @@ class TodayType(messages.Message):
     best = messages.MessageField(TodayDetail, 1, repeated=False)
     worst = messages.MessageField(TodayDetail, 2, repeated=False)
 
+
+class HistoricDate(messages.Message):
+    date = messages.StringField(1)
+    index = messages.FloatField(2)
+
+
 class ZoneDetail(messages.Message):
     title = messages.StringField(1)
     index = messages.FloatField(2)
@@ -65,6 +71,7 @@ class ZoneDetail(messages.Message):
     timestamp = messages.FloatField(7)
     id = messages.FloatField(8)
     subtitle = messages.StringField(9)
+    history = messages.MessageField(HistoricDate, 10, repeated=True)
 
 
 class ZoneMessage(messages.Message):
@@ -247,7 +254,6 @@ class AirupApi(remote.Service):
 
             zonesArr = []
             for r in res:
-
                 zonesArr.append(
                     ZoneDetail(
                         id=float(r.key().id()),
@@ -257,23 +263,40 @@ class AirupApi(remote.Service):
                         co=r.co + random.randint(0,9),
                         no2=r.no2 + random.randint(0,9),
                         min24Hr=r.min24Hr,
-                        max24Hr=r.max24Hr
+                        max24Hr=r.max24Hr,
+                        history=HistoricDate(date="2014-11-11",index=22),
+                        lalala="ddddd"
                         )
                     )
 
             return ZoneMessage(
                 key=request.id,
                 timestamp=float(time.time()),
-                today= TodayType(best=TodayDetail(index=13.0, location="Antartica"), worst=TodayDetail(index=425.0, location="Beijing")),
+                today= TodayType(best=TodayDetail(index=13.0, location="Antartica"), worst=TodayDetail(index=225.0, location="Beijing")),
                 zones = zonesArr
                 )            
         except (IndexError, TypeError):
             raise endpoints.NotFoundException('Report %s not found.' % (request.id,))
 
+
+
     LATLONG_RESOURCE = endpoints.ResourceContainer(message_types.VoidMessage,lat=messages.StringField(1, variant=messages.Variant.STRING),long=messages.StringField(2, variant=messages.Variant.STRING))
     @endpoints.method(LATLONG_RESOURCE, ZoneDetail, path='location/lat/{lat}/long/{long}', http_method='GET', name='report.getLocation')
     def location_get(self, request):
-        return ZoneDetail(id=4793444555816960.0,title='Hornstull',subtitle='Stockholm, Sweden',index=200.0,co=24.0,no2=111.0,min24Hr=23.0,max24Hr=89.0,timestamp=float(time.time()))
+        # Do some reverese geocoding and return the correct Zone
+        # http://maps.googleapis.com/maps/api/geocode/json?latlng=59.330979,18.068874&sensor=true
+        #print request.lat
+        # https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=59.312963,18.080363&sensor=true&result_type=sublocality_level_2|neighborhood&location_type=APPROXIMATE
+        address="1600+Amphitheatre+Parkway,+Mountain+View,+CA"
+        latlng = request.lat + "," + request.long
+        #url="https://maps.googleapis.com/maps/api/geocode/json?address=%s" % address
+        url="https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&result_type=sublocality_level_2|neighborhood&location_type=APPROXIMATE&latlng=%s" % latlng
+        response = urllib2.urlopen(url)
+        #jsongeocode = response.read()
+        data = json.loads(response.read())
+        zone = data["results"][0]["address_components"][0]["long_name"]
+
+        return ZoneDetail(id=4793444555816960.0,title=zone,subtitle='Stockholm, Sweden',index=200.0,co=24.0,no2=111.0,min24Hr=23.0,max24Hr=89.0,timestamp=float(time.time()))
 
 
     LOCATIONS_RESOURCE = endpoints.ResourceContainer(message_types.VoidMessage,zone=messages.FloatField(1,repeated=True))
@@ -289,8 +312,12 @@ class AirupApi(remote.Service):
             res = db.GqlQuery("SELECT * FROM ZoneDetailPersist WHERE __key__ IN (" + ", ".join(qArr) + ")")
             
             zonesArr = []
-            for r in res:
+            historyArr = []
+            historyArr.append(HistoricDate(date="2014-10-31",index=22.0))
+            historyArr.append(HistoricDate(date="2014-10-30",index=32.0))
+            historyArr.append(HistoricDate(date="2014-10-29",index=12.0))
 
+            for r in res:
                 zonesArr.append(
                     ZoneDetail(
                         id=float(r.key().id()),
@@ -300,7 +327,8 @@ class AirupApi(remote.Service):
                         co=r.co + random.randint(0,9),
                         no2=r.no2 + random.randint(0,9),
                         min24Hr=r.min24Hr,
-                        max24Hr=r.max24Hr
+                        max24Hr=r.max24Hr,
+                        history=historyArr
                         )
                     )
 
