@@ -246,40 +246,6 @@ class AirupApi(remote.Service):
                                               (request.id,))
 
 
-    ID_RESOURCE2 = endpoints.ResourceContainer(message_types.VoidMessage,id=messages.StringField(1, variant=messages.Variant.STRING))
-    @endpoints.method(ID_RESOURCE2, ZoneMessage,path='zones/{id}', http_method='GET',name='zones.getReport')
-    def report_get(self, request):
-        try:
-            res = db.GqlQuery("SELECT * FROM ZoneDetailPersist")
-
-            zonesArr = []
-            for r in res:
-                zonesArr.append(
-                    ZoneDetail(
-                        id=float(r.key().id()),
-                        title=r.title,
-                        subtitle=r.subtitle,
-                        index=r.index + random.randint(0,20),
-                        co=r.co + random.randint(0,9),
-                        no2=r.no2 + random.randint(0,9),
-                        min24Hr=r.min24Hr,
-                        max24Hr=r.max24Hr,
-                        history=HistoricDate(date="2014-11-11",index=22),
-                        lalala="ddddd"
-                        )
-                    )
-
-            return ZoneMessage(
-                key=request.id,
-                timestamp=float(time.time()),
-                today= TodayType(best=TodayDetail(index=13.0, location="Antartica"), worst=TodayDetail(index=225.0, location="Beijing")),
-                zones = zonesArr
-                )            
-        except (IndexError, TypeError):
-            raise endpoints.NotFoundException('Report %s not found.' % (request.id,))
-
-
-
     LATLONG_RESOURCE = endpoints.ResourceContainer(message_types.VoidMessage,lat=messages.StringField(1, variant=messages.Variant.STRING),long=messages.StringField(2, variant=messages.Variant.STRING))
     @endpoints.method(LATLONG_RESOURCE, ZoneDetail, path='location/lat/{lat}/long/{long}', http_method='GET', name='report.getLocation')
     def location_get(self, request):
@@ -304,12 +270,13 @@ class AirupApi(remote.Service):
     def locations_get(self, request):
 
         try:
-
-            qArr = []
-            for z in request.zone:
-                qArr.append("KEY('ZoneDetailPersist'," + str(int(z)) + ")")
-
-            res = db.GqlQuery("SELECT * FROM ZoneDetailPersist WHERE __key__ IN (" + ", ".join(qArr) + ")")
+            if len(request.zone) > 0:
+                qArr = []
+                for z in request.zone:
+                    qArr.append("KEY('ZoneDetailPersist'," + str(int(z)) + ")")
+                res = db.GqlQuery("SELECT * FROM ZoneDetailPersist WHERE __key__ IN (" + ", ".join(qArr) + ")")
+            else:
+                res = db.GqlQuery("SELECT * FROM ZoneDetailPersist")
             
             zonesArr = []
             historyArr = []
