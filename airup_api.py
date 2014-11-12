@@ -55,6 +55,10 @@ class TodayType(messages.Message):
     best = messages.MessageField(TodayDetail, 1, repeated=False)
     worst = messages.MessageField(TodayDetail, 2, repeated=False)
 
+class Location(messages.Message):
+    country = messages.StringField(1)
+    language = messages.StringField(2)
+
 
 class HistoricDate(messages.Message):
     date = messages.StringField(1)
@@ -72,7 +76,7 @@ class ZoneDetail(messages.Message):
     id = messages.FloatField(8)
     subtitle = messages.StringField(9)
     history = messages.MessageField(HistoricDate, 10, repeated=True)
-
+    location = messages.MessageField(Location, 11, repeated=False)
 
 class ZoneMessage(messages.Message):
     key = messages.StringField(1)
@@ -295,7 +299,8 @@ class AirupApi(remote.Service):
                         no2=r.no2 + random.randint(0,9),
                         min24Hr=r.min24Hr,
                         max24Hr=r.max24Hr,
-                        history=historyArr
+                        history=historyArr,
+                        location=Location(country="sv",language="SE")
                         )
                     )
 
