@@ -137,7 +137,7 @@ class Goteborg(webapp2.RequestHandler):
 
 		req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
 		#req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
-		#req.add_header('Content-Type', 'application/json')
+		req.add_header('Content-Type', 'application/json')
 		response = urllib2.urlopen(req, json.dumps(postdata))
 
 
