@@ -2,6 +2,9 @@
 #
 # Copyright 2007 Google Inc.
 #
+# Data sources:
+# http://www.ehp.qld.gov.au/cgi-bin/air/xml.php?category=1&region=ALL
+# http://campodenno.taslab.eu/stazioni/json?id=CMD001
 import os
 import ast
 import logging
@@ -11,12 +14,16 @@ import json
 import urllib2
 from google.appengine.api import taskqueue
 from google.appengine.ext import db
+from protorpc import messages
+from protorpc import message_types
+from protorpc import remote
 from random import randrange
 import datetime
 import csv
 import StringIO
 import json
 from google.appengine.ext import db
+import hashlib
 
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
@@ -25,30 +32,13 @@ JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.di
 class AirReport(): pass
 class HoodReport(): pass
 
-class JsonProperty(db.TextProperty):
-	def validate(self, value):
-		return value
-
-	def get_value_for_datastore(self, model_instance):
-		result = super(JsonProperty, self).get_value_for_datastore(model_instance)
-		#result = json.dumps(result)
-		result = json.dumps(result, default=lambda o: o.__dict__)
-		return db.Text(result)
-
-	def make_value_from_datastore(self, value):
-		try:
-			value = json.loads(str(value))
-		except:
-			pass
-
-		return super(JsonProperty, self).make_value_from_datastore(value)
-
 class Report(db.Model):
-	name = db.StringProperty()
-	report = JsonProperty()
+    zoneKey = db.StringProperty()
+    name = db.StringProperty()
+    report = db.TextProperty()
 
 
-class ZoneDetailPersist(db.Model):
+class ZoneDetailPersist(db. Model):
     """Models an individual Record entry with content and date."""
     timestamp = db.DateTimeProperty()
     title = db.StringProperty()
@@ -58,6 +48,8 @@ class ZoneDetailPersist(db.Model):
     co = db.FloatProperty()
     no2 = db.FloatProperty()
     index = db.FloatProperty()
+    location = db.StringProperty(multiline=True)
+    history = db.StringProperty(multiline=True)
     #id = db.FloatProperty()
 
 
@@ -68,10 +60,11 @@ class Records(db.Model):
     co = db.FloatProperty()
     no2 = db.FloatProperty()
     index = db.FloatProperty()
-    indexLabel = db.StringProperty()
     position = db.GeoPtProperty()
     positionLabels = db.StringProperty()
     sourceId = db.StringProperty()
+    zoneKey = db.StringProperty()
+
 
 class Hamburg1(webapp2.RequestHandler):
 	#http://hamburg.luftmessnetz.de/station/68HB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday
@@ -111,7 +104,7 @@ class Hamburg1(webapp2.RequestHandler):
 class Goteborg(webapp2.RequestHandler):
 
     def get(self):
-		self.response.write("GBG start")
+		self.response.write("GBG start Now...")
 		url = "http://data.goteborg.se/AirQualityService/v1.0/LatestMeasurement/4abad3dd-5d24-4c9c-9d17-79a946abe6c2?format=json"
 		response = urllib2.urlopen(url);
 		data = json.loads(response.read())
@@ -144,7 +137,7 @@ class Goteborg(webapp2.RequestHandler):
 
 		req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
 		#req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
-		req.add_header('Content-Type', 'application/json')
+		#req.add_header('Content-Type', 'application/json')
 		response = urllib2.urlopen(req, json.dumps(postdata))
 
 
@@ -233,63 +226,145 @@ def aqi(values):
     if f > 0:
         return float((coIndex+pm10Index+no2Index)/f)
 
-
+"""
+Stores the actual measurement data from the different sources.
+TODO:
+    1. Should store the position labels.
+    2. Should not have to store the indexLabel. A dictionary will be included in the ZoneMessage.
+"""
 class RegisterRecord(webapp2.RequestHandler):
     def post(self): # should run at most 1/s
-		# Only needs timestamp, pm10, co, no2, position and sourceId as input. 
-		# The rest should be calculated here.
-		pm10=self.request.get('pm10')
-		co=self.request.get('co')
-		no2=self.request.get('no2')
+        print "#1. Worker is registering "
+        # Only needs timestamp, pm10, co, no2, position and sourceId as input.
+        # The rest should be calculated here.
+        pm10=self.request.get('pm10')
+        co=self.request.get('co')
+        no2=self.request.get('no2')
 
-		index=aqi({"co":co,"pm10":pm10,"no2":no2})
-		
-		if ast.literal_eval(co) is None:
-			co = None
-		else:
-			co = float(co)
+        aqiValue=aqi({"co":co,"pm10":pm10,"no2":no2})
 
-		if ast.literal_eval(pm10) is None:
-			pm10 = None
-		else:
-			pm10 = float(pm10)
+        if ast.literal_eval(co) is None:
+            co = None
+        else:
+            co = float(co)
 
-		if ast.literal_eval(no2) is None:
-			no2 = None
-		else:
-			no2 = float(no2)
-		
-		rec = Records(
-			# timestamp=float(self.request.get('timestamp')),
-			timestamp=datetime.datetime.fromtimestamp(float(self.request.get('timestamp'))),
-			pm10=pm10,
-			co=co,
-			no2=no2,
-			# The index should be calculated here
-			#index=self.request.get('index'),
-			index=index,
-			indexLabel='GOOD',
-			# TODO: Do a lookup to google
-			position=self.request.get('position'),
-			positionLabels="---",
-			sourceId=self.request.get('sourceId'),
-		)
-		rec.put()
+        if ast.literal_eval(pm10) is None:
+            pm10 = None
+        else:
+            pm10 = float(pm10)
+
+        if ast.literal_eval(no2) is None:
+            no2 = None
+        else:
+            no2 = float(no2)
+
+        latlng = self.request.get('position')
+        url="https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&result_type=sublocality_level_1|sublocality_level_2|neighborhood&location_type=APPROXIMATE&latlng=%s" % latlng
+        response = urllib2.urlopen(url)
+        data = json.loads(response.read())
+        zoneTitle = data["results"][0]["address_components"][0]["long_name"]
+        formatted_address = data["results"][0]["formatted_address"]
+
+        formatted_address = formatted_address
+        zoneSubTitle = formatted_address
+        country = data["results"][0]["address_components"][-1]["short_name"]
+        idhash= hashlib.md5(formatted_address.encode('ascii', 'ignore').decode('ascii')).hexdigest()
+
+        rec=Records(
+            timestamp=datetime.datetime.fromtimestamp(float(self.request.get('timestamp'))),
+            pm10=pm10,
+            co=co,
+            no2=no2,
+            zoneKey=idhash,
+            # The index should be calculated here
+            #index=self.request.get('index'),
+            index=aqiValue,
+            # TODO: Do a lookup to google
+            position=self.request.get('position'),
+            positionLabels=zoneTitle,
+            sourceId=self.request.get('sourceId'),
+        )
+        rec.put()
+
+        """
+        Now, generate the report...
+        1. Hitta ytterligare poster i samma zone
+        2. Rakna ut medeltal for index och de olika gaserna.
+        3. Kolla om det finns en rapport sedan tidigare.
+        4. spara historiska data
+        5. Berakna min24hr och max 24hr
+        """
+
+        res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + idhash + "'")
+        avrIndex = 0
+        for r in res:
+            avrIndex = avrIndex + r.index
+
+        class Location(): pass
+        location = Location()
+        location.country=country
+
+        historyArr = []
+        class HistoricDate():
+            def __init__(self, dict):
+                self.__dict__ = dict
+
+        historyArr.append(HistoricDate({'date' : '2014-11-10', 'index':11.0}))
+        historyArr.append(HistoricDate({'date' : '2014-11-11', 'index':13.0}))
+
+        class ZoneDetail():
+            def to_JSON(self):
+                return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True)
+
+        zd = ZoneDetail()
+        zd.zoneKey=idhash
+        zd.title=zoneTitle
+        zd.subtitle=zoneSubTitle
+        zd.index=avrIndex/res.count()
+        zd.co=co
+        zd.no2=no2
+        zd.location=location
+        zd.history=historyArr
+        zd.min24Hr=1.0
+        zd.max24Hr=1.0
+
+        print zd.to_JSON()
+
+
+        rec = Report(
+            name=zoneSubTitle,
+            key_name=idhash,
+            zoneKey=idhash,
+            report=zd.to_JSON()
+        )
+
+        rec.put()
+
+        myKey = db.Key.from_path('Report', idhash)
+        rec = db.get(myKey)
+        rec.report = zd.to_JSON()
+        rec.put()
 
 
 class RegisterZone(webapp2.RequestHandler):
-	def post(self): # should run at most 1/s
-		r = ZoneDetailPersist(
-			timestamp=datetime.datetime.fromtimestamp(float(self.request.get('timestamp'))),
-			co=float(self.request.get('co')),
-			no2=float(self.request.get('no2')),
-			index=float(self.request.get('index')),
-			max24Hr=float(self.request.get('max24Hr')),
-			min24Hr=float(self.request.get('min24Hr')),
-			title=self.request.get('title'),
-			subtitle=self.request.get('subtitle')
-		)
-		r.put()
+    def post(self):
+        jsonstr = self.request.body
+        print jsonstr
+        print self.request.get('location')
+        r = ZoneDetailPersist(
+            timestamp=datetime.datetime.fromtimestamp(float(self.request.get('timestamp'))),
+            co=float(self.request.get('co')),
+            no2=float(self.request.get('no2')),
+            index=float(self.request.get('index')),
+            max24Hr=float(self.request.get('max24Hr')),
+            min24Hr=float(self.request.get('min24Hr')),
+            title=self.request.get('title'),
+            location=self.request.get('location'),
+            history=self.request.get('history'),
+            subtitle=self.request.get('subtitle')
+        )
+        r.put()
+
 
 class Index(webapp2.RequestHandler):
     def get(self):
@@ -299,4 +374,35 @@ class Index(webapp2.RequestHandler):
 		template = JINJA_ENVIRONMENT.get_template('index.html')
 		self.response.write(template.render(template_values))
 
-app = webapp2.WSGIApplication([('/worker', RegisterRecord),('/zoneWworker', RegisterZone),('/gbg1', Goteborg),('/umea1', Umea),('/hamburg1', Hamburg1),('/sthlm', Sthlm),('/index.html', Index)], debug=True)
+class GenerateReport(webapp2.RequestHandler):
+    def get(self):
+        self.response.write("OK")
+
+        zd = ZoneDetail(
+            id=111111111111111.0,
+            title="",
+            subtitle="",
+            index="",
+            co="",
+            no2="",
+            min24Hr="",
+            max24Hr="",
+            history="",
+            location=Location(country="sv",language="SE")
+        )
+        rec = Report(
+            name="dddd",
+            report="{}"
+        )
+        rec.put()
+
+app = webapp2.WSGIApplication([
+        ('/worker', RegisterRecord),
+        ('/zoneWworker', RegisterZone),
+        ('/gbg1', Goteborg),
+        ('/umea1', Umea),
+        ('/hamburg1', Hamburg1),
+        ('/sthlm', Sthlm),
+        ('/generateReport', GenerateReport),
+        ('/index.html', Index)
+    ], debug=True)
