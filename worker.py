@@ -234,7 +234,7 @@ TODO:
 """
 class RegisterRecord(webapp2.RequestHandler):
     def post(self): # should run at most 1/s
-        print "#1. Worker is registering "
+        # print "#1. Worker is registering "
         # Only needs timestamp, pm10, co, no2, position and sourceId as input.
         # The rest should be calculated here.
         pm10=self.request.get('pm10')
@@ -243,114 +243,114 @@ class RegisterRecord(webapp2.RequestHandler):
 
         aqiValue=aqi({"co":co,"pm10":pm10,"no2":no2})
 
-        if ast.literal_eval(co) is None:
-            co = None
+        if aqiValue is None:
+            print "No AQI"
         else:
-            co = float(co)
+            if ast.literal_eval(co) is None:
+                co = None
+            else:
+                co = float(co)
 
-        if ast.literal_eval(pm10) is None:
-            pm10 = None
-        else:
-            pm10 = float(pm10)
+            if ast.literal_eval(pm10) is None:
+                pm10 = None
+            else:
+                pm10 = float(pm10)
 
-        if ast.literal_eval(no2) is None:
-            no2 = None
-        else:
-            no2 = float(no2)
+            if ast.literal_eval(no2) is None:
+                no2 = None
+            else:
+                no2 = float(no2)
 
-        latlng = self.request.get('position')
-        url="https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&result_type=sublocality_level_1|sublocality_level_2|neighborhood&location_type=APPROXIMATE&latlng=%s" % latlng
-        response = urllib2.urlopen(url)
-        data = json.loads(response.read())
-        zoneTitle = data["results"][0]["address_components"][0]["long_name"]
-        formatted_address = data["results"][0]["formatted_address"]
+            latlng = self.request.get('position')
+            url="https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&result_type=sublocality_level_1|sublocality_level_2|neighborhood&location_type=APPROXIMATE&latlng=%s" % latlng
+            response = urllib2.urlopen(url)
+            data = json.loads(response.read())
+            zoneTitle = data["results"][0]["address_components"][0]["long_name"]
+            formatted_address = data["results"][0]["formatted_address"]
 
-        formatted_address = formatted_address
-        zoneSubTitle = formatted_address
-        country = data["results"][0]["address_components"][-1]["short_name"]
-        idhash= hashlib.md5(formatted_address.encode('ascii', 'ignore').decode('ascii')).hexdigest()
-
-        rec=Records(
-            timestamp=datetime.datetime.fromtimestamp(float(self.request.get('timestamp'))),
-            pm10=pm10,
-            co=co,
-            no2=no2,
-            zoneKey=idhash,
-            # The index should be calculated here
-            #index=self.request.get('index'),
-            index=aqiValue,
-            # TODO: Do a lookup to google
-            position=self.request.get('position'),
-            positionLabels=zoneTitle,
-            sourceId=self.request.get('sourceId'),
-        )
-        rec.put()
-
-        """
-        Now, generate the report...
-        1. Hitta ytterligare poster i samma zone
-        2. Rakna ut medeltal for index och de olika gaserna.
-        3. Kolla om det finns en rapport sedan tidigare.
-        4. spara historiska data
-        5. Berakna min24hr och max 24hr
-        """
-
-        res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + idhash + "'")
-        avrIndex = 0
-        for r in res:
-            avrIndex = avrIndex + r.index
-
-        class Location(): pass
-        location = Location()
-        location.country=country
-
-        historyArr = []
-        class HistoricDate():
-            def __init__(self, dict):
-                self.__dict__ = dict
-
-        historyArr.append(HistoricDate({'date' : '2014-11-10', 'index':11.0}))
-        historyArr.append(HistoricDate({'date' : '2014-11-11', 'index':13.0}))
-
-        class ZoneDetail():
-            def to_JSON(self):
-                return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True)
-
-        zd = ZoneDetail()
-        zd.zoneKey=idhash
-        zd.title=zoneTitle
-        zd.subtitle=zoneSubTitle
-        zd.index=avrIndex/res.count()
-        zd.co=co
-        zd.no2=no2
-        zd.location=location
-        zd.history=historyArr
-        zd.min24Hr=1.0
-        zd.max24Hr=1.0
-
-        print zd.to_JSON()
+            formatted_address = formatted_address
+            zoneSubTitle = formatted_address
+            country = data["results"][0]["address_components"][-1]["short_name"]
+            idhash= hashlib.md5(formatted_address.encode('ascii', 'ignore').decode('ascii')).hexdigest()
 
 
-        rec = Report(
-            name=zoneSubTitle,
-            key_name=idhash,
-            zoneKey=idhash,
-            report=zd.to_JSON()
-        )
+            rec=Records(
+                timestamp=datetime.datetime.fromtimestamp(float(self.request.get('timestamp'))),
+                pm10=pm10,
+                co=co,
+                no2=no2,
+                zoneKey=idhash,
+                # The index should be calculated here
+                #index=self.request.get('index'),
+                index=aqiValue,
+                # TODO: Do a lookup to google
+                position=self.request.get('position'),
+                positionLabels=zoneTitle,
+                sourceId=self.request.get('sourceId'),
+            )
 
-        rec.put()
+            rec.put()
 
-        myKey = db.Key.from_path('Report', idhash)
-        rec = db.get(myKey)
-        rec.report = zd.to_JSON()
-        rec.put()
+            """
+            Now, generate the report...
+            1. Hitta ytterligare poster i samma zone
+            2. Rakna ut medeltal for index och de olika gaserna.
+            3. Kolla om det finns en rapport sedan tidigare.
+            4. spara historiska data
+            5. Berakna min24hr och max 24hr
+            """
+
+            res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + idhash + "'")
+            avrIndex = 0
+            for r in res:
+                avrIndex = avrIndex + r.index
+
+            class Location(): pass
+            location = Location()
+            location.country=country
+
+            historyArr = []
+            class HistoricDate():
+                def __init__(self, dict):
+                    self.__dict__ = dict
+
+            historyArr.append(HistoricDate({'date' : '2014-11-10', 'index':11.0}))
+            historyArr.append(HistoricDate({'date' : '2014-11-11', 'index':13.0}))
+
+            class ZoneDetail():
+                def to_JSON(self):
+                    return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True)
+
+            zd = ZoneDetail()
+            zd.zoneKey=idhash
+            zd.title=zoneTitle
+            zd.subtitle=zoneSubTitle
+            zd.index=avrIndex/res.count()
+            zd.co=co
+            zd.no2=no2
+            zd.location=location
+            zd.history=historyArr
+            zd.min24Hr=1.0
+            zd.max24Hr=1.0
+
+            rec = Report(
+                name=zoneSubTitle,
+                key_name=idhash,
+                zoneKey=idhash,
+                report=zd.to_JSON()
+            )
+
+            rec.put()
+
+            myKey = db.Key.from_path('Report', idhash)
+            rec = db.get(myKey)
+            rec.report = zd.to_JSON()
+            rec.put()
 
 
 class RegisterZone(webapp2.RequestHandler):
     def post(self):
         jsonstr = self.request.body
-        print jsonstr
-        print self.request.get('location')
         r = ZoneDetailPersist(
             timestamp=datetime.datetime.fromtimestamp(float(self.request.get('timestamp'))),
             co=float(self.request.get('co')),
