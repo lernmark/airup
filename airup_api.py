@@ -198,7 +198,7 @@ class AirupApi(remote.Service):
                         min24Hr=j.get('min24hr', None),
                         max24Hr=j.get('max24hr', None),
                         history=j.get('history'),
-                        location=Location(country="sv",language="SE")
+                        location=Location(country="de",language="DE")
                         )
                     )
             return ZoneMessage(
