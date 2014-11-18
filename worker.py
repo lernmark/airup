@@ -93,8 +93,8 @@ class Hamburg1(webapp2.RequestHandler):
 		postdata['sourceId'] = 'Hamburg1'
 		postdata['position'] = '53.555555,9.943407'
 		
-		req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
-		#req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
+		#req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
+		req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
 		req.add_header('Content-Type', 'application/json')
 		response = urllib2.urlopen(req, json.dumps(postdata))
 
@@ -135,8 +135,8 @@ class Goteborg(webapp2.RequestHandler):
 		
 		self.response.write(postdata)
 
-		req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
-		#req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
+		#req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
+		req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
 		req.add_header('Content-Type', 'application/json')
 		response = urllib2.urlopen(req, json.dumps(postdata))
 
@@ -164,8 +164,8 @@ class Umea(webapp2.RequestHandler):
 		postdata['sourceId'] = 'UMEA1'
 		postdata['position'] = '63.827743,20.256825'
 
-		req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
-		#req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
+		#req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
+		req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
 		req.add_header('Content-Type', 'application/json')
 		response = urllib2.urlopen(req, json.dumps(postdata))
 		self.response.write(postdata)
@@ -262,7 +262,8 @@ class RegisterRecord(webapp2.RequestHandler):
                 no2 = float(no2)
 
             latlng = self.request.get('position')
-            url="https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&result_type=sublocality_level_1|sublocality_level_2|neighborhood&location_type=APPROXIMATE&latlng=%s" % latlng
+            #url="https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&result_type=sublocality_level_1|sublocality_level_2|neighborhood&location_type=APPROXIMATE&latlng=%s" % latlng
+            url="https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s" % latlng
             response = urllib2.urlopen(url)
             data = json.loads(response.read())
             zoneTitle = data["results"][0]["address_components"][0]["long_name"]
