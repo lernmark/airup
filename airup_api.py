@@ -42,6 +42,12 @@ class TodayDetail(messages.Message):
     index = messages.FloatField(1)
     location = messages.StringField(2)
 
+class FactMessage(messages.Message):
+    body = messages.StringField(1)
+
+class Fact(db.Model):
+    body = db.StringProperty()
+
 class TodayType(messages.Message):
     best = messages.MessageField(TodayDetail, 1, repeated=False)
     worst = messages.MessageField(TodayDetail, 2, repeated=False)
@@ -83,6 +89,7 @@ class ZoneMessage(messages.Message):
     today = messages.MessageField(TodayType, 3, repeated=False)
     indexCategory = messages.MessageField(IndexCategory, 4, repeated=True)
     timestamp = messages.FloatField(5)
+    facts = messages.MessageField(FactMessage, 6, repeated=True)
 
 
 """
@@ -93,6 +100,17 @@ API STARTS HERE
 @endpoints.api(name='airup', version='v1')
 class AirupApi(remote.Service):
     """Airup API v1."""
+
+
+    FACT_RESOURCE = endpoints.ResourceContainer(FactMessage)
+    @endpoints.method(FACT_RESOURCE, FactMessage, path='addNewFact', http_method='POST', name='factMessage.addNew')
+    def factMessage_addNew(self, request):
+        fact = Fact(
+            body=request.body
+        )
+        fact.put()
+        return FactMessage(body=request.body)
+
 
     """
     Save raw-data-records from stations.
@@ -174,19 +192,24 @@ class AirupApi(remote.Service):
         ]
 
         try:
+
+            factArr = []
+            factResult = db.GqlQuery("SELECT * FROM Fact")
+            for f in factResult:
+                factArr.append(FactMessage(body=f.body))
+
             if len(request.zone) > 0:
                 qArr = []
                 for z in request.zone:
                     qArr.append("KEY('Report','" + z + "')")
-
                 res = db.GqlQuery("SELECT * FROM Report WHERE __key__ IN (" + ", ".join(qArr) + ")")
             else:
                 res = db.GqlQuery("SELECT * FROM Report")
 
             zonesArr = []
-
             for r in res:
                 j = json.loads(r.report)
+                loc = j["location"]["country"]
                 zonesArr.append(
                     ZoneDetail(
                         title=j['title'],
@@ -198,14 +221,15 @@ class AirupApi(remote.Service):
                         min24Hr=j.get('min24hr', None),
                         max24Hr=j.get('max24hr', None),
                         history=j.get('history'),
-                        location=Location(country="de",language="DE")
+                        location=Location(country=j["location"]["country"],language="DE")
                         )
                     )
             return ZoneMessage(
                 indexCategory = ic,
                 timestamp=float(time.time()),
                 today= TodayType(best=TodayDetail(index=3.0, location="Antartica"), worst=TodayDetail(index=425.0, location="Beijing")),
-                zones = zonesArr
+                zones = zonesArr,
+                facts = factArr
                 )  
 
             return ZoneMessage()

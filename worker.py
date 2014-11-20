@@ -233,6 +233,8 @@ TODO:
     2. Should not have to store the indexLabel. A dictionary will be included in the ZoneMessage.
 """
 class RegisterRecord(webapp2.RequestHandler):
+
+
     def post(self): # should run at most 1/s
         # print "#1. Worker is registering "
         # Only needs timestamp, pm10, co, no2, position and sourceId as input.
@@ -242,6 +244,39 @@ class RegisterRecord(webapp2.RequestHandler):
         no2=self.request.get('no2')
 
         aqiValue=aqi({"co":co,"pm10":pm10,"no2":no2})
+
+        """
+        1. Hitta forsta reult-posten i listan med keys
+        2. Hitta forsta address_component- posten i listan med keys
+
+        def getGeoValue(data, keys, valueType):
+            def getGeoValueForAddress(res):
+                for ac in res["address_components"]:
+                    for key in keys:
+                        if key in ac["types"]:
+                            return ac[valueType]
+                return None
+            for res in data["results"]:
+                return getGeoValueForAddress(res)
+            return None
+        """
+
+        def getGeoValue(data, keys, valueType):
+            #print "---------------------------"
+            def getGeoValueForAddress(res):
+                for key1 in keys:
+                    for ac in res["address_components"]:
+                        if key1 in ac["types"]:
+                            return ac[valueType]
+                return None
+            for key in keys:
+                for res in data["results"]:
+                    if key in res["types"]:
+                        returnVal = getGeoValueForAddress(res)
+                        #print returnVal + " - key=" + key
+                        return returnVal
+            return None
+
 
         if aqiValue is None:
             print "No AQI"
@@ -263,17 +298,23 @@ class RegisterRecord(webapp2.RequestHandler):
 
             latlng = self.request.get('position')
             #url="https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&result_type=sublocality_level_1|sublocality_level_2|neighborhood&location_type=APPROXIMATE&latlng=%s" % latlng
-            url="https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s" % latlng
+            url="https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s" % latlng
             response = urllib2.urlopen(url)
             data = json.loads(response.read())
-            zoneTitle = data["results"][0]["address_components"][0]["long_name"]
-            formatted_address = data["results"][0]["formatted_address"]
+            #zoneTitle = data["results"][0]["address_components"][0]["long_name"]
+            keyList = ["neighborhood","sublocality_level_2","sublocality_level_1","administrative_area_level_3","postal_code"]
+            zoneTitle = getGeoValue(data, keyList, "long_name")
+            zoneSubTitleArr = []
+            zoneSubTitleArr.append(getGeoValue(data, ["locality","postal_town"], "long_name"))
+            zoneSubTitleArr.append(getGeoValue(data, ["administrative_area_level_1"], "long_name"))
 
-            formatted_address = formatted_address
-            zoneSubTitle = formatted_address
-            country = data["results"][0]["address_components"][-1]["short_name"]
-            idhash= hashlib.md5(formatted_address.encode('ascii', 'ignore').decode('ascii')).hexdigest()
-
+            #zoneSubTitle =  ", ".join(list(set(zoneSubTitleArr)))
+            zoneSubTitle =  ", ".join(zoneSubTitleArr)
+            country = getGeoValue(data, ["country"], "short_name")
+            #country = data["results"][0]["address_components"][-1]["short_name"]
+            zoneKeyInputString = zoneTitle + zoneSubTitle + country
+            idhash= hashlib.md5(zoneKeyInputString.encode('ascii', 'ignore').decode('ascii')).hexdigest()
+            #idhash= zoneKeyInputString.md5(zoneKeyInputString.encode('ascii', 'ignore').decode('ascii')).hexdigest()
 
             rec=Records(
                 timestamp=datetime.datetime.fromtimestamp(float(self.request.get('timestamp'))),
@@ -308,7 +349,8 @@ class RegisterRecord(webapp2.RequestHandler):
 
             class Location(): pass
             location = Location()
-            location.country=country
+            location.country=country.lower()
+            location.language="EN"
 
             historyArr = []
             class HistoricDate():
@@ -326,7 +368,10 @@ class RegisterRecord(webapp2.RequestHandler):
             zd.zoneKey=idhash
             zd.title=zoneTitle
             zd.subtitle=zoneSubTitle
-            zd.index=avrIndex/res.count()
+            if res.count() > 0:
+                zd.index=avrIndex/res.count()
+            else:
+                zd.index=avrIndex
             zd.co=co
             zd.no2=no2
             zd.location=location
