@@ -24,6 +24,7 @@ import StringIO
 import json
 from google.appengine.ext import db
 import hashlib
+#from datetime import datetime, timedelta
 
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
@@ -37,20 +38,6 @@ class Report(db.Model):
     name = db.StringProperty()
     report = db.TextProperty()
 
-
-class ZoneDetailPersist(db. Model):
-    """Models an individual Record entry with content and date."""
-    timestamp = db.DateTimeProperty()
-    title = db.StringProperty()
-    subtitle = db.StringProperty()
-    max24Hr = db.FloatProperty()
-    min24Hr = db.FloatProperty()
-    co = db.FloatProperty()
-    no2 = db.FloatProperty()
-    index = db.FloatProperty()
-    location = db.StringProperty(multiline=True)
-    history = db.StringProperty(multiline=True)
-    #id = db.FloatProperty()
 
 
 class Records(db.Model):
@@ -67,38 +54,51 @@ class Records(db.Model):
 
 
 class Hamburg1(webapp2.RequestHandler):
-	#http://hamburg.luftmessnetz.de/station/68HB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday
-	def get(self):
-		# Data from http://luft.hamburg.de/
-		#http://hamburg.luftmessnetz.de/station/68HB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday
-		url = "http://hamburg.luftmessnetz.de/station/70MB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday"
-		response = urllib2.urlopen(url);
-		cr = csv.reader(response)
-		postdata = {}
-		rlista = list(cr)[5]
-		co = rlista[1]
 
-		try:
-			co = rlista[1]
-			postdata['co'] = str(((float(co))*24.4500)/28.0100) #Convert mg/m3 to ppm
-		except Exception, e:
-			print "No co"
+    def get(self):
+        print "HBG"
 
-		try:
-			no2 = rlista[3]
-			postdata['no2'] = str(((float(no2)/1000.0000)*24.4500)/46.0100) #Convert mg/m3 to ppm
-		except Exception, e:
-			print "No no2"
+        def regData(url, sourceId, position):
+            response = urllib2.urlopen(url);
+            cr = csv.reader(response)
+            postdata = {}
+            rlista = list(cr)[5]
+            co = rlista[1]
 
-		postdata['sourceId'] = 'Hamburg1'
-		postdata['position'] = '53.555555,9.943407'
-		
-		req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
-		#req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
-		req.add_header('Content-Type', 'application/json')
-		response = urllib2.urlopen(req, json.dumps(postdata))
+            try:
+                co = rlista[1]
+                postdata['co'] = str(((float(co))*24.4500)/28.0100) #Convert mg/m3 to ppm
+            except Exception, e:
+                print "No co"
 
-		self.response.write("<br/><code>DONE Hamburg1<code><br/>")
+            try:
+                no2 = rlista[3]
+                postdata['no2'] = str(((float(no2)/1000.0000)*24.4500)/46.0100) #Convert mg/m3 to ppm
+            except Exception, e:
+                print "No no2"
+
+            postdata['sourceId'] = sourceId
+            postdata['position'] = position
+
+            req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
+            #req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
+            req.add_header('Content-Type', 'application/json')
+            response = urllib2.urlopen(req, json.dumps(postdata))
+
+            self.response.write("<br/><code>DONE " + sourceId + "<code><br/>")
+
+
+        """
+        Data from http://luft.hamburg.de/
+        24FL - 53.638128,9.996872
+        70MB - 53.555555,9.943407
+        17SM - 53.560899,9.957213
+        68HB - 53.592354,10.053774
+        """
+        regData("http://hamburg.luftmessnetz.de/station/70MB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-70MB", "53.555555,9.943407")
+        regData("http://hamburg.luftmessnetz.de/station/17SM/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-17SM", "53.560899,9.957213")
+        regData("http://hamburg.luftmessnetz.de/station/68HB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-68HB", "53.592354,10.053774")
+        regData("http://hamburg.luftmessnetz.de/station/68HB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-24HL", "53.638128,9.996872")
 		
 		
 class Goteborg(webapp2.RequestHandler):
@@ -189,16 +189,20 @@ tablePm10 = [ range(0, 54, 1),range(55, 154, 1),range(155, 254, 1),range(255, 35
 
 def index(table, v, fac):
 
-    row = [i for i,l in enumerate(table) if int(v*fac) in l][0]
-    bpLow = float(table[row][0])/fac
-    bpHigh = (float(table[row][len(table[row])-1]+1)/fac)
-    iLow = tableAqiIndex[row][0]
-    iHigh = tableAqiIndex[row][len(tableAqiIndex[row])-1]+1
-    index = (
-        (float(iHigh) - float(iLow)) / 
-        (float(bpHigh) - float(bpLow))
-        ) * (float(v)-(float(bpLow))) + float(iLow)
-    return int(index)
+    try:
+        row = [i for i,l in enumerate(table) if int(v*fac) in l][0]
+        bpLow = float(table[row][0])/fac
+        bpHigh = (float(table[row][len(table[row])-1]+1)/fac)
+        iLow = tableAqiIndex[row][0]
+        iHigh = tableAqiIndex[row][len(tableAqiIndex[row])-1]+1
+        index = (
+            (float(iHigh) - float(iLow)) /
+            (float(bpHigh) - float(bpLow))
+            ) * (float(v)-(float(bpLow))) + float(iLow)
+        return int(index)
+    except Exception, e:
+        print e
+        return 0
 
 def aqi(values):
 
@@ -211,9 +215,10 @@ def aqi(values):
     pm10Index = 0
     no2Index = 0
 
+
     if ast.literal_eval(co) is not None:
-		coIndex = index(tableCo, float(co), 10)
-		f = f+1
+        coIndex = index(tableCo, float(co), 10)
+        f = f+1
 
     if ast.literal_eval(pm10) is not None:
     	pm10Index = index(tablePm10, float(pm10), 1)
@@ -312,6 +317,7 @@ class RegisterRecord(webapp2.RequestHandler):
         pm10=self.request.get('pm10')
         co=self.request.get('co')
         no2=self.request.get('no2')
+
         aqiValue=aqi({"co":co,"pm10":pm10,"no2":no2})
 
         if aqiValue is None:
@@ -367,6 +373,8 @@ class RegisterRecord(webapp2.RequestHandler):
             5. Berakna min24hr och max 24hr
             """
 
+            """ Get the data newer than 1 hour """
+            #res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "' AND timestamp >= :1", datetime.datetime.now() - datetime.timedelta(hours = 6))
             res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "'")
             avrIndex = 0
             for r in res:
@@ -393,6 +401,7 @@ class RegisterRecord(webapp2.RequestHandler):
             zd.zoneKey=zoneKey
             zd.title=zoneTitle
             zd.subtitle=zoneSubTitle
+            zd.numberOfMeasurements=str(res.count())
             if res.count() > 0:
                 zd.index=avrIndex/res.count()
             else:
@@ -419,24 +428,6 @@ class RegisterRecord(webapp2.RequestHandler):
             rec.put()
 
 
-class RegisterZone(webapp2.RequestHandler):
-    def post(self):
-        jsonstr = self.request.body
-        r = ZoneDetailPersist(
-            timestamp=datetime.datetime.fromtimestamp(float(self.request.get('timestamp'))),
-            co=float(self.request.get('co')),
-            no2=float(self.request.get('no2')),
-            index=float(self.request.get('index')),
-            max24Hr=float(self.request.get('max24Hr')),
-            min24Hr=float(self.request.get('min24Hr')),
-            title=self.request.get('title'),
-            location=self.request.get('location'),
-            history=self.request.get('history'),
-            subtitle=self.request.get('subtitle')
-        )
-        r.put()
-
-
 class Index(webapp2.RequestHandler):
     def get(self):
 		template_values = {
@@ -445,35 +436,12 @@ class Index(webapp2.RequestHandler):
 		template = JINJA_ENVIRONMENT.get_template('index.html')
 		self.response.write(template.render(template_values))
 
-class GenerateReport(webapp2.RequestHandler):
-    def get(self):
-        self.response.write("OK")
-
-        zd = ZoneDetail(
-            id=111111111111111.0,
-            title="",
-            subtitle="",
-            index="",
-            co="",
-            no2="",
-            min24Hr="",
-            max24Hr="",
-            history="",
-            location=Location(country="sv",language="SE")
-        )
-        rec = Report(
-            name="dddd",
-            report="{}"
-        )
-        rec.put()
 
 app = webapp2.WSGIApplication([
         ('/worker', RegisterRecord),
-        ('/zoneWworker', RegisterZone),
         ('/gbg1', Goteborg),
         ('/umea1', Umea),
         ('/hamburg1', Hamburg1),
         ('/sthlm', Sthlm),
-        ('/generateReport', GenerateReport),
         ('/index.html', Index)
     ], debug=True)
