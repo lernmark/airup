@@ -230,7 +230,7 @@ def aqi(values):
 
 class cache(object):
     def __init__(self, fun):
-        print "init cache"
+        #print "init cache"
         self.fun = fun
         self.cache = {}
 
@@ -266,9 +266,35 @@ def getGeoValue(latlng, keys, valueType):
         for res in data["results"]:
             if key in res["types"]:
                 returnVal = getGeoValueForAddress(res)
-                #print returnVal + " - key=" + key
                 return returnVal
     return None
+
+def getLocationContext(latlng):
+
+    context = {}
+
+    keyList = ["neighborhood","sublocality_level_2","sublocality_level_1","administrative_area_level_3","postal_code"]
+    zoneTitle = getGeoValue(latlng, keyList, "long_name")
+    zoneSubTitleArr = []
+    zoneSubTitleArr.append(getGeoValue(latlng, ["locality","postal_town"], "long_name"))
+    zoneSubTitleArr.append(getGeoValue(latlng, ["administrative_area_level_1"], "long_name"))
+    zoneSubTitle = ", ".join(zoneSubTitleArr)
+    country = getGeoValue(latlng, ["country"], "short_name")
+
+    context["zoneTitle"] = zoneTitle
+    context["zoneSubTitle"] = zoneSubTitle
+    context["country"] = country
+    context["zoneKey"] = generateZoneKey(zoneTitle,zoneSubTitle,country)
+    return context
+
+def generateZoneKey(zoneTitle,zoneSubTitle,country):
+    zoneKeyInputString = zoneTitle + zoneSubTitle + country
+    return hashlib.md5(zoneKeyInputString.encode('ascii', 'ignore').decode('ascii')).hexdigest()
+
+def test():
+    robj = {}
+    robj["country"] = "Sweden"
+    return robj
 
 """
 Stores the actual measurement data from the different sources.
@@ -307,27 +333,20 @@ class RegisterRecord(webapp2.RequestHandler):
                 no2 = float(no2)
 
             latlng = self.request.get('position')
-            #url="https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&result_type=sublocality_level_1|sublocality_level_2|neighborhood&location_type=APPROXIMATE&latlng=%s" % latlng
-            keyList = ["neighborhood","sublocality_level_2","sublocality_level_1","administrative_area_level_3","postal_code"]
-            zoneTitle = getGeoValue(latlng, keyList, "long_name")
-            zoneSubTitleArr = []
-            zoneSubTitleArr.append(getGeoValue(latlng, ["locality","postal_town"], "long_name"))
-            zoneSubTitleArr.append(getGeoValue(latlng, ["administrative_area_level_1"], "long_name"))
 
-            #zoneSubTitle =  ", ".join(list(set(zoneSubTitleArr)))
-            zoneSubTitle =  ", ".join(zoneSubTitleArr)
-            country = getGeoValue(latlng, ["country"], "short_name")
-            #country = data["results"][0]["address_components"][-1]["short_name"]
-            zoneKeyInputString = zoneTitle + zoneSubTitle + country
-            idhash= hashlib.md5(zoneKeyInputString.encode('ascii', 'ignore').decode('ascii')).hexdigest()
-            #idhash= zoneKeyInputString.md5(zoneKeyInputString.encode('ascii', 'ignore').decode('ascii')).hexdigest()
+            locationContext = getLocationContext(latlng)
+            zoneKey = locationContext.get('zoneKey')
+            zoneTitle = locationContext.get('zoneTitle')
+            zoneSubTitle = locationContext.get('zoneSubTitle')
+            country = locationContext.get('country')
+
 
             rec=Records(
                 timestamp=datetime.datetime.fromtimestamp(float(self.request.get('timestamp'))),
                 pm10=pm10,
                 co=co,
                 no2=no2,
-                zoneKey=idhash,
+                zoneKey=zoneKey,
                 # The index should be calculated here
                 #index=self.request.get('index'),
                 index=aqiValue,
@@ -348,7 +367,7 @@ class RegisterRecord(webapp2.RequestHandler):
             5. Berakna min24hr och max 24hr
             """
 
-            res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + idhash + "'")
+            res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "'")
             avrIndex = 0
             for r in res:
                 avrIndex = avrIndex + r.index
@@ -371,13 +390,13 @@ class RegisterRecord(webapp2.RequestHandler):
                     return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True)
 
             zd = ZoneDetail()
-            zd.zoneKey=idhash
+            zd.zoneKey=zoneKey
             zd.title=zoneTitle
             zd.subtitle=zoneSubTitle
             if res.count() > 0:
                 zd.index=avrIndex/res.count()
             else:
-                zd.index=float(r.index)
+                zd.index=float(r[0].index)
             zd.co=co
             zd.no2=no2
             zd.location=location
@@ -387,14 +406,14 @@ class RegisterRecord(webapp2.RequestHandler):
 
             rec = Report(
                 name=zoneSubTitle,
-                key_name=idhash,
-                zoneKey=idhash,
+                key_name=zoneKey,
+                zoneKey=zoneKey,
                 report=zd.to_JSON()
             )
 
             rec.put()
 
-            myKey = db.Key.from_path('Report', idhash)
+            myKey = db.Key.from_path('Report', zoneKey)
             rec = db.get(myKey)
             rec.report = zd.to_JSON()
             rec.put()

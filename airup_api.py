@@ -94,10 +94,68 @@ class ZoneMessage(messages.Message):
     facts = messages.MessageField(FactMessage, 6, repeated=True)
 
 
+
+def generateZoneMessage(zone):
+    print zone
+    """Return all zones or only specified zones"""
+    ic = [
+        IndexCategory(upTo=50.0,label="Good"),
+        IndexCategory(upTo=100.0,label="Moderate"),
+        IndexCategory(upTo=150.0,label="Unhealthy for Sensitive Group"),
+        IndexCategory(upTo=200.0,label="Unhealthy"),
+        IndexCategory(upTo=300.0,label="Very Unhealthy"),
+        IndexCategory(upTo=500.0,label="Hazardous")
+    ]
+
+    try:
+
+        factArr = []
+        factResult = db.GqlQuery("SELECT * FROM Fact")
+        for f in factResult:
+            factArr.append(FactMessage(body=f.body))
+
+        if len(zone) > 0:
+            qArr = []
+            for z in zone:
+                qArr.append("KEY('Report','" + z + "')")
+            res = db.GqlQuery("SELECT * FROM Report WHERE __key__ IN (" + ", ".join(qArr) + ")")
+        else:
+            res = db.GqlQuery("SELECT * FROM Report")
+
+        zonesArr = []
+        for r in res:
+            j = json.loads(r.report)
+            loc = j.get('location', None)
+            zonesArr.append(
+                ZoneDetail(
+                    title=j['title'],
+                    subtitle=j.get('subtitle', None),
+                    index=j.get('index', None),
+                    co=j.get('co', None),
+                    zoneKey=j.get('zoneKey', None),
+                    no2=j.get('no2', None),
+                    min24Hr=j.get('min24hr', None),
+                    max24Hr=j.get('max24hr', None),
+                    history=j.get('history'),
+                    location=Location(country=j["location"]["country"],language=j["location"]["country"])
+                    )
+                )
+        return ZoneMessage(
+            indexCategory = ic,
+            timestamp=float(time.time()),
+            today= TodayType(best=TodayDetail(index=3.0, location="Antartica"), worst=TodayDetail(index=425.0, location="Beijing")),
+            zones = zonesArr,
+            facts = factArr
+            )
+
+        return ZoneMessage()
+    except (IndexError, TypeError):
+        raise endpoints.NotFoundException(IndexError)
+
+
+
 """
-
 API STARTS HERE
-
 """
 @endpoints.api(name='airup', version='v1')
 class AirupApi(remote.Service):
@@ -159,91 +217,29 @@ class AirupApi(remote.Service):
     3. Returnera hittad ZoneDetail
     """
     LATLNG_RESOURCE = endpoints.ResourceContainer(message_types.VoidMessage,lat=messages.StringField(1, variant=messages.Variant.STRING),lng=messages.StringField(2, variant=messages.Variant.STRING))
-    @endpoints.method(LATLNG_RESOURCE, ZoneDetail, path='location/lat/{lat}/lng/{lng}', http_method='GET', name='report.getLocation')
+    @endpoints.method(LATLNG_RESOURCE, ZoneMessage, path='location/lat/{lat}/lng/{lng}', http_method='GET', name='report.getLocation')
     def location_get(self, request):
         """
         Find the zone for current location.
-
         """
+        latlng = request.lat + "," + request.lng
 
-        print getGeoValue(lat + "," + lng, ["administrative_area_level_1"], "long_name")
-
-        # Do some reverese geocoding and return the correct Zone
-        # http://maps.googleapis.com/maps/api/geocode/json?latlng=59.330979,18.068874&sensor=true
-        #print request.lat
-        # https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=59.312963,18.080363&sensor=true&result_type=sublocality_level_2|neighborhood&location_type=APPROXIMATE
-        #address="1600+Amphitheatre+Parkway,+Mountain+View,+CA"
-        #latlng = request.lat + "," + request.lng
-        #url="https://maps.googleapis.com/maps/api/geocode/json?address=%s" % address
-        #url="https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&result_type=sublocality_level_2|neighborhood&location_type=APPROXIMATE&latlng=%s" % latlng
-        #response = urllib2.urlopen(url)
-        #jsongeocode = response.read()
-        #data = json.loads(response.read())
-        #zone = data["results"][0]["address_components"][0]["long_name"]
-
-        return ZoneDetail(id=4793444555816960.0,title=zone,subtitle='Stockholm, Sweden',index=200.0,co=24.0,no2=111.0,min24Hr=23.0,max24Hr=89.0,timestamp=float(time.time()))
+        try:
+            print worker.getLocationContext(latlng)
+            context = worker.getLocationContext(latlng)
+            zoneKey = context.get("zoneKey")
+            print zoneKey
+            return generateZoneMessage([zoneKey])
+        except Exception, e:
+            return ZoneMessage()
 
 
-    """
-    API that returns specified zones or all zones
-    """
     LOCATIONS_RESOURCE = endpoints.ResourceContainer(message_types.VoidMessage,zone=messages.StringField(1,repeated=True))
     @endpoints.method(LOCATIONS_RESOURCE, ZoneMessage, path='zones', http_method='GET', name='zones.getRequestedZones')
     def locations_get(self, request):
-        """Return all zones or only specified zones"""
-        ic = [
-            IndexCategory(upTo=50.0,label="Good"),
-            IndexCategory(upTo=100.0,label="Moderate"),
-            IndexCategory(upTo=150.0,label="Unhealthy for Sensitive Group"),
-            IndexCategory(upTo=200.0,label="Unhealthy"),
-            IndexCategory(upTo=300.0,label="Very Unhealthy"),
-            IndexCategory(upTo=500.0,label="Hazardous")
-        ]
-
-        try:
-
-            factArr = []
-            factResult = db.GqlQuery("SELECT * FROM Fact")
-            for f in factResult:
-                factArr.append(FactMessage(body=f.body))
-
-            if len(request.zone) > 0:
-                qArr = []
-                for z in request.zone:
-                    qArr.append("KEY('Report','" + z + "')")
-                res = db.GqlQuery("SELECT * FROM Report WHERE __key__ IN (" + ", ".join(qArr) + ")")
-            else:
-                res = db.GqlQuery("SELECT * FROM Report")
-
-            zonesArr = []
-            for r in res:
-                j = json.loads(r.report)
-                loc = j.get('location', None)
-                print loc
-                zonesArr.append(
-                    ZoneDetail(
-                        title=j['title'],
-                        subtitle=j.get('subtitle', None),
-                        index=j.get('index', None),
-                        co=j.get('co', None),
-                        zoneKey=j.get('zoneKey', None),
-                        no2=j.get('no2', None),
-                        min24Hr=j.get('min24hr', None),
-                        max24Hr=j.get('max24hr', None),
-                        history=j.get('history'),
-                        location=Location(country=j["location"]["country"],language=j["location"]["country"])
-                        )
-                    )
-            return ZoneMessage(
-                indexCategory = ic,
-                timestamp=float(time.time()),
-                today= TodayType(best=TodayDetail(index=3.0, location="Antartica"), worst=TodayDetail(index=425.0, location="Beijing")),
-                zones = zonesArr,
-                facts = factArr
-                )  
-
-            return ZoneMessage()
-        except (IndexError, TypeError):
-            raise endpoints.NotFoundException(IndexError)
+        """
+        API that returns specified zones or all zones
+        """
+        return generateZoneMessage(request.zone)
 
 APPLICATION = endpoints.api_server([AirupApi])
