@@ -226,6 +226,50 @@ def aqi(values):
     if f > 0:
         return float((coIndex+pm10Index+no2Index)/f)
 
+
+
+class cache(object):
+    def __init__(self, fun):
+        print "init cache"
+        self.fun = fun
+        self.cache = {}
+
+    def __call__(self, *args, **kwargs):
+        key  = str(args) + str(kwargs)
+        #print "call cache"
+
+        try:
+            #print "return cache " + key
+            return self.cache[key]
+        except KeyError:
+            self.cache[key] = rval = self.fun(*args, **kwargs)
+            return rval
+        except TypeError: # incase key isn't a valid key - don't cache
+            return self.fun(*args, **kwargs)
+
+@cache
+def get_geolocation_url_src(url):
+    return urllib2.urlopen(url).read()
+
+def getGeoValue(latlng, keys, valueType):
+
+    url="https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s" % latlng
+    data = json.loads(get_geolocation_url_src(url))
+
+    def getGeoValueForAddress(res):
+        for key1 in keys:
+            for ac in res["address_components"]:
+                if key1 in ac["types"]:
+                    return ac[valueType]
+        return None
+    for key in keys:
+        for res in data["results"]:
+            if key in res["types"]:
+                returnVal = getGeoValueForAddress(res)
+                #print returnVal + " - key=" + key
+                return returnVal
+    return None
+
 """
 Stores the actual measurement data from the different sources.
 TODO:
@@ -242,41 +286,7 @@ class RegisterRecord(webapp2.RequestHandler):
         pm10=self.request.get('pm10')
         co=self.request.get('co')
         no2=self.request.get('no2')
-
         aqiValue=aqi({"co":co,"pm10":pm10,"no2":no2})
-
-        """
-        1. Hitta forsta reult-posten i listan med keys
-        2. Hitta forsta address_component- posten i listan med keys
-
-        def getGeoValue(data, keys, valueType):
-            def getGeoValueForAddress(res):
-                for ac in res["address_components"]:
-                    for key in keys:
-                        if key in ac["types"]:
-                            return ac[valueType]
-                return None
-            for res in data["results"]:
-                return getGeoValueForAddress(res)
-            return None
-        """
-
-        def getGeoValue(data, keys, valueType):
-            #print "---------------------------"
-            def getGeoValueForAddress(res):
-                for key1 in keys:
-                    for ac in res["address_components"]:
-                        if key1 in ac["types"]:
-                            return ac[valueType]
-                return None
-            for key in keys:
-                for res in data["results"]:
-                    if key in res["types"]:
-                        returnVal = getGeoValueForAddress(res)
-                        #print returnVal + " - key=" + key
-                        return returnVal
-            return None
-
 
         if aqiValue is None:
             print "No AQI"
@@ -298,19 +308,15 @@ class RegisterRecord(webapp2.RequestHandler):
 
             latlng = self.request.get('position')
             #url="https://maps.googleapis.com/maps/api/geocode/json?key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&result_type=sublocality_level_1|sublocality_level_2|neighborhood&location_type=APPROXIMATE&latlng=%s" % latlng
-            url="https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s" % latlng
-            response = urllib2.urlopen(url)
-            data = json.loads(response.read())
-            #zoneTitle = data["results"][0]["address_components"][0]["long_name"]
             keyList = ["neighborhood","sublocality_level_2","sublocality_level_1","administrative_area_level_3","postal_code"]
-            zoneTitle = getGeoValue(data, keyList, "long_name")
+            zoneTitle = getGeoValue(latlng, keyList, "long_name")
             zoneSubTitleArr = []
-            zoneSubTitleArr.append(getGeoValue(data, ["locality","postal_town"], "long_name"))
-            zoneSubTitleArr.append(getGeoValue(data, ["administrative_area_level_1"], "long_name"))
+            zoneSubTitleArr.append(getGeoValue(latlng, ["locality","postal_town"], "long_name"))
+            zoneSubTitleArr.append(getGeoValue(latlng, ["administrative_area_level_1"], "long_name"))
 
             #zoneSubTitle =  ", ".join(list(set(zoneSubTitleArr)))
             zoneSubTitle =  ", ".join(zoneSubTitleArr)
-            country = getGeoValue(data, ["country"], "short_name")
+            country = getGeoValue(latlng, ["country"], "short_name")
             #country = data["results"][0]["address_components"][-1]["short_name"]
             zoneKeyInputString = zoneTitle + zoneSubTitle + country
             idhash= hashlib.md5(zoneKeyInputString.encode('ascii', 'ignore').decode('ascii')).hexdigest()
@@ -371,7 +377,7 @@ class RegisterRecord(webapp2.RequestHandler):
             if res.count() > 0:
                 zd.index=avrIndex/res.count()
             else:
-                zd.index=avrIndex
+                zd.index=float(r.index)
             zd.co=co
             zd.no2=no2
             zd.location=location
