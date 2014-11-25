@@ -96,7 +96,6 @@ class ZoneMessage(messages.Message):
 
 
 def generateZoneMessage(zone):
-    print zone
     """Return all zones or only specified zones"""
     ic = [
         IndexCategory(upTo=50.0,label="Good"),
@@ -225,10 +224,8 @@ class AirupApi(remote.Service):
         latlng = request.lat + "," + request.lng
 
         try:
-            print worker.getLocationContext(latlng)
             context = worker.getLocationContext(latlng)
             zoneKey = context.get("zoneKey")
-            print zoneKey
             return generateZoneMessage([zoneKey])
         except Exception, e:
             return ZoneMessage()
