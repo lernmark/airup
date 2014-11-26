@@ -136,7 +136,7 @@ def generateZoneMessage(zone):
                     min24Hr=j.get('min24hr', None),
                     max24Hr=j.get('max24hr', None),
                     history=j.get('history'),
-                    location=Location(country=j["location"]["country"],language=j["location"]["country"])
+                    location=Location(country=j["location"]["country"],language="en")
                     )
                 )
         return ZoneMessage(

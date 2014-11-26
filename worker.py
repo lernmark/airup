@@ -382,8 +382,8 @@ class RegisterRecord(webapp2.RequestHandler):
 
             class Location(): pass
             location = Location()
-            location.country=country.lower()
-            location.language="EN"
+            location.country=country.upper()
+            location.language="en"
 
             historyArr = []
             class HistoricDate():
