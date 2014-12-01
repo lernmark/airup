@@ -22,7 +22,7 @@ Data from http://luft.hamburg.de/
 70MB - 53.555555,9.943407
 17SM - 53.560899,9.957213
 68HB - 53.592354,10.053774
-
+61WB -
 """
 import os
 import ast
@@ -58,8 +58,6 @@ class Report(db.Model):
     zoneKey = db.StringProperty()
     name = db.StringProperty()
     report = db.TextProperty()
-
-
 
 class Records(db.Model):
     """Models an individual Record entry with content and date."""
@@ -115,17 +113,19 @@ class Hamburg1(webapp2.RequestHandler):
         70MB - 53.555555,9.943407
         17SM - 53.560899,9.957213
         68HB - 53.592354,10.053774
+        61WB - 53.508315,9.990633
         """
+
         regData("http://hamburg.luftmessnetz.de/station/70MB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-70MB", "53.555555,9.943407")
         regData("http://hamburg.luftmessnetz.de/station/17SM/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-17SM", "53.560899,9.957213")
         regData("http://hamburg.luftmessnetz.de/station/68HB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-68HB", "53.592354,10.053774")
         regData("http://hamburg.luftmessnetz.de/station/24FL/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-24FL", "53.638128,9.996872")
+        regData("http://hamburg.luftmessnetz.de/station/61WB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-61WB", "53.508315,9.990633")
 		
 		
 class Goteborg(webapp2.RequestHandler):
 
     def get(self):
-		self.response.write("GBG start Now...")
 		url = "http://data.goteborg.se/AirQualityService/v1.0/LatestMeasurement/4abad3dd-5d24-4c9c-9d17-79a946abe6c2?format=json"
 		response = urllib2.urlopen(url);
 		data = json.loads(response.read())

@@ -212,7 +212,6 @@ class AirupApi(remote.Service):
 
     """
     Returnera en ZoneDetail för en viss lat/lng
-    OBS! Ej klar...
     1. Använd geocode-api för att hitta platsen.
     2. Försök hitta en ZoneDetail som matchar
         a. neighborhood
