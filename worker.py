@@ -44,8 +44,8 @@ import json
 from google.appengine.ext import db
 import hashlib
 
-SERVICE_URL = "http://localhost:8888"
-#SERVICE_URL = "https://bamboo-zone-547.appspot.com"
+#SERVICE_URL = "http://localhost:8888"
+SERVICE_URL = "https://bamboo-zone-547.appspot.com"
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
 
