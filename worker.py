@@ -15,7 +15,7 @@ BER - 52.536958,13.408041
 HTULL -
 SOFO - 59.312963,18.080363
 
-Barrsätra - 60.620428,16.750116
+Barrsatra - 60.620428,16.750116
 New Holland/Admiralteysky District St Petersburg - 59.929506,30.289360
 Data from http://luft.hamburg.de/
 24FL - 53.638128,9.996872
@@ -43,6 +43,9 @@ import StringIO
 import json
 from google.appengine.ext import db
 import hashlib
+
+SERVICE_URL = "http://localhost:8888"
+#SERVICE_URL = "https://bamboo-zone-547.appspot.com"
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
 
@@ -97,8 +100,8 @@ class Hamburg1(webapp2.RequestHandler):
             postdata['sourceId'] = sourceId
             postdata['position'] = position
 
-            req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
-            #req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
+            #req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
+            req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
             req.add_header('Content-Type', 'application/json')
             response = urllib2.urlopen(req, json.dumps(postdata))
 
@@ -152,8 +155,7 @@ class Goteborg(webapp2.RequestHandler):
 		
 		self.response.write(postdata)
 
-		req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
-		#req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
+		req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
 		req.add_header('Content-Type', 'application/json')
 		response = urllib2.urlopen(req, json.dumps(postdata))
 
@@ -181,8 +183,7 @@ class Umea(webapp2.RequestHandler):
 		postdata['sourceId'] = 'UMEA1'
 		postdata['position'] = '63.827743,20.256825'
 
-		req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
-		#req = urllib2.Request('http://localhost:8888/_ah/api/airup/v1/queueIt')
+		req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
 		req.add_header('Content-Type', 'application/json')
 		response = urllib2.urlopen(req, json.dumps(postdata))
 		self.response.write(postdata)
