@@ -5,6 +5,25 @@
 # Data sources:
 # http://www.ehp.qld.gov.au/cgi-bin/air/xml.php?category=1&region=ALL
 # http://campodenno.taslab.eu/stazioni/json?id=CMD001
+# coding=utf-8
+
+"""
+NY - 40.714224,-73.961452
+SP - -23.560057,-46.634334
+GBG - 57.70887,11.97456
+BER - 52.536958,13.408041
+HTULL -
+SOFO - 59.312963,18.080363
+
+Barrsätra - 60.620428,16.750116
+New Holland/Admiralteysky District St Petersburg - 59.929506,30.289360
+Data from http://luft.hamburg.de/
+24FL - 53.638128,9.996872
+70MB - 53.555555,9.943407
+17SM - 53.560899,9.957213
+68HB - 53.592354,10.053774
+
+"""
 import os
 import ast
 import logging
@@ -24,8 +43,6 @@ import StringIO
 import json
 from google.appengine.ext import db
 import hashlib
-#from datetime import datetime, timedelta
-
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
 
@@ -98,7 +115,7 @@ class Hamburg1(webapp2.RequestHandler):
         regData("http://hamburg.luftmessnetz.de/station/70MB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-70MB", "53.555555,9.943407")
         regData("http://hamburg.luftmessnetz.de/station/17SM/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-17SM", "53.560899,9.957213")
         regData("http://hamburg.luftmessnetz.de/station/68HB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-68HB", "53.592354,10.053774")
-        regData("http://hamburg.luftmessnetz.de/station/68HB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-24HL", "53.638128,9.996872")
+        regData("http://hamburg.luftmessnetz.de/station/24FL/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-24FL", "53.638128,9.996872")
 		
 		
 class Goteborg(webapp2.RequestHandler):
@@ -274,16 +291,29 @@ def getGeoValue(latlng, keys, valueType):
                 return returnVal
     return None
 
+def getGeoFormattedAddress(latlng, keys):
+
+    url="https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s" % latlng
+    data = json.loads(get_geolocation_url_src(url))
+
+
+    for key in keys:
+        for res in data["results"]:
+            if key in res["types"]:
+                return res["formatted_address"]
+    return None
+
 def getLocationContext(latlng):
 
     context = {}
-
     keyList = ["neighborhood","sublocality_level_2","sublocality_level_1","administrative_area_level_3","postal_code"]
-    zoneTitle = getGeoValue(latlng, keyList, "long_name")
-    zoneSubTitleArr = []
-    zoneSubTitleArr.append(getGeoValue(latlng, ["locality","postal_town"], "long_name"))
-    zoneSubTitleArr.append(getGeoValue(latlng, ["administrative_area_level_1"], "long_name"))
-    zoneSubTitle = ", ".join(zoneSubTitleArr)
+    addrString = getGeoFormattedAddress(latlng, keyList).encode("utf-8")
+    addrList = addrString.split(", ")
+    zoneTitle = addrList[0].decode("utf-8","ignore")
+    addrList.remove(addrList[0])
+    addrList.remove(addrList[-1])
+    zoneSubTitle = ", ".join(addrList).decode("utf-8")
+
     country = getGeoValue(latlng, ["country"], "short_name")
 
     context["zoneTitle"] = zoneTitle
@@ -294,7 +324,9 @@ def getLocationContext(latlng):
 
 def generateZoneKey(zoneTitle,zoneSubTitle,country):
     zoneKeyInputString = zoneTitle + zoneSubTitle + country
-    return hashlib.md5(zoneKeyInputString.encode('ascii', 'ignore').decode('ascii')).hexdigest()
+    zoneKey = hashlib.md5(zoneKeyInputString.encode('ascii', 'ignore').decode('ascii')).hexdigest()
+    print zoneKey
+    return zoneKey
 
 def test():
     robj = {}
