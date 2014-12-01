@@ -25,7 +25,7 @@ package = 'Airup'
 
 class Report(db.Model):
     name = db.StringProperty()
-    report = db.StringProperty(multiline=True)
+    report = db.TextProperty()
 
 """
 Används för att representera mätdata från en mätare
@@ -39,6 +39,10 @@ class Record(messages.Message):
     position = messages.StringField(6)
     positionLabels = messages.StringField(7)
     sourceId = messages.StringField(8, required=True)
+
+class Station(messages.Message):
+    sourceId = messages.StringField(1)
+    position = messages.StringField(2)
 
 class TodayDetail(messages.Message):
     index = messages.FloatField(1)
@@ -82,6 +86,9 @@ class ZoneDetail(messages.Message):
     history = messages.MessageField(HistoricDate, 10, repeated=True)
     location = messages.MessageField(Location, 11, repeated=False)
     zoneKey = messages.StringField(12)
+    numberOfMeasurements = messages.FloatField(13)
+    stations = messages.MessageField(Station, 14, repeated=True)
+    position = messages.StringField(15)
 
 # Class used to wrap a list of reporta and other
 # stuff sucha as best, worst, index labels, etc.
@@ -92,7 +99,6 @@ class ZoneMessage(messages.Message):
     indexCategory = messages.MessageField(IndexCategory, 4, repeated=True)
     timestamp = messages.FloatField(5)
     facts = messages.MessageField(FactMessage, 6, repeated=True)
-
 
 
 def generateZoneMessage(zone):
@@ -135,8 +141,11 @@ def generateZoneMessage(zone):
                     no2=j.get('no2', None),
                     min24Hr=j.get('min24hr', None),
                     max24Hr=j.get('max24hr', None),
+                    position=j.get('position'),
                     history=j.get('history'),
-                    location=Location(country=j["location"]["country"],language="en")
+                    stations=j.get('stations'),
+                    location=Location(country=j["location"]["country"],language="en"),
+                    numberOfMeasurements = float(j.get('numberOfMeasurements',None))
                     )
                 )
         return ZoneMessage(

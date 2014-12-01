@@ -44,8 +44,9 @@ import json
 from google.appengine.ext import db
 import hashlib
 
-#SERVICE_URL = "http://localhost:8888"
-SERVICE_URL = "https://bamboo-zone-547.appspot.com"
+GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s"
+SERVICE_URL = "http://localhost:8888"
+#SERVICE_URL = "https://bamboo-zone-547.appspot.com"
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
 
@@ -276,7 +277,7 @@ def get_geolocation_url_src(url):
 
 def getGeoValue(latlng, keys, valueType):
 
-    url="https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s" % latlng
+    url=GEOLOCATION_URL % latlng
     data = json.loads(get_geolocation_url_src(url))
 
     def getGeoValueForAddress(res):
@@ -293,10 +294,8 @@ def getGeoValue(latlng, keys, valueType):
     return None
 
 def getGeoFormattedAddress(latlng, keys):
-
-    url="https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s" % latlng
+    url=GEOLOCATION_URL % latlng
     data = json.loads(get_geolocation_url_src(url))
-
 
     for key in keys:
         for res in data["results"]:
@@ -304,11 +303,22 @@ def getGeoFormattedAddress(latlng, keys):
                 return res["formatted_address"]
     return None
 
-def getLocationContext(latlng):
+def getGeoPosition(latlng, keys):
+    url=GEOLOCATION_URL % latlng
+    data = json.loads(get_geolocation_url_src(url))
 
+    for key in keys:
+        for res in data["results"]:
+            if key in res["types"]:
+                return str(res["geometry"]["location"]["lat"]) + "," + str(res["geometry"]["location"]["lng"])
+    return None
+
+
+def getLocationContext(latlng):
     context = {}
     keyList = ["neighborhood","sublocality_level_2","sublocality_level_1","administrative_area_level_3","postal_code"]
     addrString = getGeoFormattedAddress(latlng, keyList).encode("utf-8")
+    hoodPosition = getGeoPosition(latlng, keyList)
     addrList = addrString.split(", ")
     zoneTitle = addrList[0].decode("utf-8","ignore")
     addrList.remove(addrList[0])
@@ -321,12 +331,12 @@ def getLocationContext(latlng):
     context["zoneSubTitle"] = zoneSubTitle
     context["country"] = country
     context["zoneKey"] = generateZoneKey(zoneTitle,zoneSubTitle,country)
+    context["position"] = hoodPosition
     return context
 
 def generateZoneKey(zoneTitle,zoneSubTitle,country):
     zoneKeyInputString = zoneTitle + zoneSubTitle + country
     zoneKey = hashlib.md5(zoneKeyInputString.encode('ascii', 'ignore').decode('ascii')).hexdigest()
-    print zoneKey
     return zoneKey
 
 def test():
@@ -378,6 +388,7 @@ class RegisterRecord(webapp2.RequestHandler):
             zoneTitle = locationContext.get('zoneTitle')
             zoneSubTitle = locationContext.get('zoneSubTitle')
             country = locationContext.get('country')
+            position = locationContext.get('position')
 
 
             rec=Records(
@@ -409,9 +420,23 @@ class RegisterRecord(webapp2.RequestHandler):
             """ Get the data newer than 1 hour """
             #res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "' AND timestamp >= :1", datetime.datetime.now() - datetime.timedelta(hours = 6))
             res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "'")
+
+
             avrIndex = 0
+            stationsDict = {}
             for r in res:
                 avrIndex = avrIndex + r.index
+                stationsDict[r.sourceId] = str(r.position)
+
+
+            stations = []
+            for key, value in stationsDict.iteritems():
+                temp = {}
+                temp["sourceId"] = key
+                temp["position"] = value
+
+                stations.append(temp)
+
 
             class Location(): pass
             location = Location()
@@ -434,6 +459,7 @@ class RegisterRecord(webapp2.RequestHandler):
             zd.zoneKey=zoneKey
             zd.title=zoneTitle
             zd.subtitle=zoneSubTitle
+            zd.stations=stations
             zd.numberOfMeasurements=str(res.count())
             if res.count() > 0:
                 zd.index=avrIndex/res.count()
@@ -442,12 +468,13 @@ class RegisterRecord(webapp2.RequestHandler):
             zd.co=co
             zd.no2=no2
             zd.location=location
+            zd.position=position
             zd.history=historyArr
             zd.min24Hr=1.0
             zd.max24Hr=1.0
 
             rec = Report(
-                name=zoneSubTitle,
+                name=zoneTitle + " " + zoneSubTitle,
                 key_name=zoneKey,
                 zoneKey=zoneKey,
                 report=zd.to_JSON()
