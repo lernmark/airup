@@ -14,6 +14,11 @@ GBG - 57.70887,11.97456
 BER - 52.536958,13.408041
 HTULL -
 SOFO - 59.312963,18.080363
+Harajuku - 35.671628,139.710285
+Wellington - -41.296435,174.776527
+Sidney - -33.896549,151.179963
+Kitazawa - 35.663365,139.668332
+Nairobi - -1.282794,36.828232
 
 Barrsatra - 60.620428,16.750116
 New Holland/Admiralteysky District St Petersburg - 59.929506,30.289360
@@ -316,7 +321,7 @@ def getGeoPosition(latlng, keys):
 
 def getLocationContext(latlng):
     context = {}
-    keyList = ["neighborhood","sublocality_level_2","sublocality_level_1","administrative_area_level_3","postal_code"]
+    keyList = ["neighborhood","sublocality_level_2","sublocality_level_1","administrative_area_level_3","colloquial_area","postal_code"]
     addrString = getGeoFormattedAddress(latlng, keyList).encode("utf-8")
     hoodPosition = getGeoPosition(latlng, keyList)
     addrList = addrString.split(", ")
@@ -467,6 +472,7 @@ class RegisterRecord(webapp2.RequestHandler):
                 zd.index=float(r[0].index)
             zd.co=co
             zd.no2=no2
+            zd.pm10=pm10
             zd.location=location
             zd.position=position
             zd.history=historyArr
