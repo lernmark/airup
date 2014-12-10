@@ -66,10 +66,12 @@ class IndexCategory(messages.Message):
     upTo = messages.FloatField(1)
     label = messages.StringField(2)
 
-class IndexBreakpoints(messages.Message):
-    gas = messages.StringField(1)
+class Breakpoints(messages.Message):
+    breakpointType = messages.StringField(1)
     category = messages.MessageField(IndexCategory, 2, repeated=True)
     unit = messages.StringField(3)
+    minValue = messages.FloatField(4)
+    maxValue = messages.FloatField(5)
 
 class HistoricDate(messages.Message):
     date = messages.StringField(1)
@@ -102,27 +104,28 @@ class ZoneMessage(messages.Message):
     zones = messages.MessageField(ZoneDetail, 2, repeated=True)
     today = messages.MessageField(TodayType, 3, repeated=False)
     indexCategory = messages.MessageField(IndexCategory, 4, repeated=True)
-    indexBreakpoints = messages.MessageField(IndexBreakpoints, 5, repeated=True)
+    breakpoints = messages.MessageField(Breakpoints, 5, repeated=True)
     timestamp = messages.FloatField(6)
     facts = messages.MessageField(FactMessage, 7, repeated=True)
 
 
 def generateZoneMessage(zone):
     """Return all zones or only specified zones"""
+    numberOfCategories = 7
     ic = []
-    for x in range(0, 7):
+    for x in range(0, numberOfCategories):
         ic.append(IndexCategory(upTo=(worker.tableAqiIndex[x][-1]+1)/1.0,label=str(worker.indexLables[x])))
 
     coBreakpoints = []
-    for x in range(0, 7):
+    for x in range(0, numberOfCategories):
         coBreakpoints.append(IndexCategory(upTo=(worker.tableCo[x][-1]+1)/10.0,label=str(worker.indexLables[x])))
 
     pm10Breakpoints = []
-    for x in range(0, 7):
+    for x in range(0, numberOfCategories):
         pm10Breakpoints.append(IndexCategory(upTo=float(worker.tablePm10[x][-1]+1),label=str(worker.indexLables[x])))
 
     no2Breakpoints = []
-    for x in range(0, 7):
+    for x in range(0, numberOfCategories):
         no2Breakpoints.append(IndexCategory(upTo=(worker.tableNo2[x][-1]+1)/1000.0,label=str(worker.indexLables[x])))
 
     try:
@@ -164,10 +167,11 @@ def generateZoneMessage(zone):
 
         return ZoneMessage(
             indexCategory = ic,
-            indexBreakpoints = [
-                IndexBreakpoints(gas="co",category=coBreakpoints, unit="ppm"),
-                IndexBreakpoints(gas="pm10",category=pm10Breakpoints, unit="mg/m3"),
-                IndexBreakpoints(gas="no2",category=no2Breakpoints, unit="ppm")
+            breakpoints = [
+                Breakpoints(breakpointType="index",category=ic, unit="AQI", minValue=0.0, maxValue=(worker.tableAqiIndex[numberOfCategories-1][-1]+1)/1.0),
+                Breakpoints(breakpointType="co",category=coBreakpoints, unit="ppm", minValue=0.0, maxValue=(worker.tableCo[numberOfCategories-1][-1]+1)/10.0),
+                Breakpoints(breakpointType="pm10",category=pm10Breakpoints, unit="mg/m3", minValue=0.0, maxValue=float(worker.tablePm10[numberOfCategories-1][-1]+1)),
+                Breakpoints(breakpointType="no2",category=no2Breakpoints, unit="ppm", minValue=0.0, maxValue=(worker.tableNo2[numberOfCategories-1][-1]+1)/1000.0)
             ],
             timestamp=float(time.time()),
             today= TodayType(best=TodayDetail(index=3.0, location="Antartica"), worst=TodayDetail(index=425.0, location="Beijing")),
