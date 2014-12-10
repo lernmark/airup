@@ -210,6 +210,8 @@ tableAqiIndex = [ range(0, 50, 1),range(51, 100, 1),range(101, 150, 1),range(151
 tableCo = [ range(0, 44, 1),range(45, 94, 1),range(95, 124, 1),range(125, 154, 1),range(155, 304, 1),range(305, 404, 1),range(405, 504, 1) ] 
 tableNo2 = [ range(0, 53, 1),range(54, 100, 1),range(101, 360, 1),range(361, 640, 1),range(650, 1240, 1),range(1250, 1640, 1),range(1650, 2040, 1) ] 
 tablePm10 = [ range(0, 54, 1),range(55, 154, 1),range(155, 254, 1),range(255, 354, 1),range(355, 424, 1),range(425, 504, 1),range(505, 604, 1) ] 
+indexLables = ["Good","Moderate","Unhealthy for Sensitive Group","Unhealthy","Very Unhealthy","Hazardous","Hazardous"]
+
 
 def index(table, v, fac):
 
@@ -248,6 +250,7 @@ def aqi(values):
     	pm10Index = index(tablePm10, float(pm10), 1)
     	f = f+1
 
+    # TODO: Check the factor
     if ast.literal_eval(no2) is not None:
     	no2Index = index(tableNo2, float(no2), 1)
     	f = f+1
