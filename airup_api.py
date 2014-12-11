@@ -80,11 +80,14 @@ class HistoricDate(messages.Message):
 """
     Class that represents a stored ZoneDetail
 """
+class ZoneDetailData(messages.Message):
+    co = messages.FloatField(1)
+    pm10 = messages.FloatField(2)
+    no2 = messages.FloatField(3)
+    index = messages.FloatField(4)
+
 class ZoneDetail(messages.Message):
     title = messages.StringField(1)
-    index = messages.FloatField(2)
-    co = messages.FloatField(3)
-    no2 = messages.FloatField(4)
     max24Hr = messages.FloatField(5)
     min24Hr = messages.FloatField(6)
     timestamp = messages.FloatField(7)
@@ -96,6 +99,8 @@ class ZoneDetail(messages.Message):
     numberOfMeasurements = messages.FloatField(13)
     stations = messages.MessageField(Station, 14, repeated=True)
     position = messages.StringField(15)
+    data = messages.MessageField(ZoneDetailData, 16, repeated=False)
+
 
 # Class used to wrap a list of reporta and other
 # stuff sucha as best, worst, index labels, etc.
@@ -103,10 +108,9 @@ class ZoneMessage(messages.Message):
     key = messages.StringField(1)
     zones = messages.MessageField(ZoneDetail, 2, repeated=True)
     today = messages.MessageField(TodayType, 3, repeated=False)
-    indexCategory = messages.MessageField(IndexCategory, 4, repeated=True)
-    breakpoints = messages.MessageField(Breakpoints, 5, repeated=True)
-    timestamp = messages.FloatField(6)
-    facts = messages.MessageField(FactMessage, 7, repeated=True)
+    breakpoints = messages.MessageField(Breakpoints, 4, repeated=True)
+    timestamp = messages.FloatField(5)
+    facts = messages.MessageField(FactMessage, 6, repeated=True)
 
 
 def generateZoneMessage(zone):
@@ -151,10 +155,8 @@ def generateZoneMessage(zone):
                 ZoneDetail(
                     title=j['title'],
                     subtitle=j.get('subtitle', None),
-                    index=j.get('index', None),
-                    co=j.get('co', None),
+                    data=ZoneDetailData(co=j.get('co', None), no2=j.get('no2', None),pm10=j.get('pm10', None),index=j.get('index', None)),
                     zoneKey=j.get('zoneKey', None),
-                    no2=j.get('no2', None),
                     min24Hr=j.get('min24hr', None),
                     max24Hr=j.get('max24hr', None),
                     position=j.get('position'),
@@ -166,7 +168,6 @@ def generateZoneMessage(zone):
                 )
 
         return ZoneMessage(
-            indexCategory = ic,
             breakpoints = [
                 Breakpoints(breakpointType="index",category=ic, unit="AQI", minValue=0.0, maxValue=(worker.tableAqiIndex[numberOfCategories-1][-1]+1)/1.0),
                 Breakpoints(breakpointType="co",category=coBreakpoints, unit="ppm", minValue=0.0, maxValue=(worker.tableCo[numberOfCategories-1][-1]+1)/10.0),
