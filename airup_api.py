@@ -171,7 +171,7 @@ def generateZoneMessage(zone):
             breakpoints = [
                 Breakpoints(breakpointType="index",category=ic, unit="AQI", minValue=0.0, maxValue=(worker.tableAqiIndex[numberOfCategories-1][-1]+1)/1.0),
                 Breakpoints(breakpointType="co",category=coBreakpoints, unit="ppm", minValue=0.0, maxValue=(worker.tableCo[numberOfCategories-1][-1]+1)/10.0),
-                Breakpoints(breakpointType="pm10",category=pm10Breakpoints, unit="mg/m3", minValue=0.0, maxValue=float(worker.tablePm10[numberOfCategories-1][-1]+1)),
+                Breakpoints(breakpointType="pm10",category=pm10Breakpoints, unit="µg/m³".decode('utf-8'), minValue=0.0, maxValue=float(worker.tablePm10[numberOfCategories-1][-1]+1)),
                 Breakpoints(breakpointType="no2",category=no2Breakpoints, unit="ppm", minValue=0.0, maxValue=(worker.tableNo2[numberOfCategories-1][-1]+1)/1000.0)
             ],
             timestamp=float(time.time()),
