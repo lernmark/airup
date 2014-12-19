@@ -437,17 +437,11 @@ class RegisterRecord(webapp2.RequestHandler):
             indexArr = []
             for r in res:
                 historyDate = r.timestamp.strftime('%Y-%m-%d')
-                #print historyDict.get(historyDate, indexArr.append(r.index))
-                #print indexArr
                 indexArr = historyDict.get(historyDate, [0.0])
                 indexArr.append(r.index)
-                print r.index
                 historyDict[historyDate] = indexArr
-                #historyDict[historyDate] = indexArr.append(r.index)
                 avrIndex = avrIndex + r.index
                 stationsDict[r.sourceId] = str(r.position)
-
-            #print historyDict
 
             stations = []
             for key, value in stationsDict.iteritems():
@@ -471,7 +465,6 @@ class RegisterRecord(webapp2.RequestHandler):
                     self.__dict__ = dict
 
             for key, value in historyDict.iteritems():
-                print value
                 historyArr.append(HistoricDate({'date' : key, 'index':reduce(lambda x, y: x + y, value) / (len(value)-1)}))
 
             """ Create the zone-detail object that will be persisted as a report for use in the zones API """
