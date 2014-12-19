@@ -430,12 +430,24 @@ class RegisterRecord(webapp2.RequestHandler):
             res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "'")
 
 
+            """ Create a list of all stations and history values """
             avrIndex = 0
             stationsDict = {}
+            historyDict = {}
+            indexArr = []
             for r in res:
+                historyDate = r.timestamp.strftime('%Y-%m-%d')
+                #print historyDict.get(historyDate, indexArr.append(r.index))
+                #print indexArr
+                indexArr = historyDict.get(historyDate, [0.0])
+                indexArr.append(r.index)
+                print r.index
+                historyDict[historyDate] = indexArr
+                #historyDict[historyDate] = indexArr.append(r.index)
                 avrIndex = avrIndex + r.index
                 stationsDict[r.sourceId] = str(r.position)
 
+            #print historyDict
 
             stations = []
             for key, value in stationsDict.iteritems():
@@ -445,20 +457,24 @@ class RegisterRecord(webapp2.RequestHandler):
 
                 stations.append(temp)
 
-
+            """ Add a proper locale. For now all languages are english """
             class Location(): pass
             location = Location()
             location.country=country.upper()
             location.language="en"
 
+
+            """ Create a array of history records. Each record contains the date and the index for that date.  """
             historyArr = []
             class HistoricDate():
                 def __init__(self, dict):
                     self.__dict__ = dict
 
-            historyArr.append(HistoricDate({'date' : '2014-11-10', 'index':11.0}))
-            historyArr.append(HistoricDate({'date' : '2014-11-11', 'index':13.0}))
+            for key, value in historyDict.iteritems():
+                print value
+                historyArr.append(HistoricDate({'date' : key, 'index':reduce(lambda x, y: x + y, value) / (len(value)-1)}))
 
+            """ Create the zone-detail object that will be persisted as a report for use in the zones API """
             class ZoneDetail():
                 def to_JSON(self):
                     return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True)
@@ -495,6 +511,10 @@ class RegisterRecord(webapp2.RequestHandler):
             rec = db.get(myKey)
             rec.report = zd.to_JSON()
             rec.put()
+
+
+
+
 
 
 class Index(webapp2.RequestHandler):
