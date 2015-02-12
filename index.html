@@ -1,12 +1,4 @@
 <!DOCTYPE html>
-<<<<<<< HEAD
-<html>
-  <head>
-    <title>Place Autocomplete Address Form</title>
-    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
-    <meta charset="utf-8">
-    <link rel="stylesheet" type="text/css" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
-=======
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -14,18 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="">
     <meta name="author" content="">
-
     <link rel="stylesheet" type="text/css" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
-
->>>>>>> a75f39671a91ccb50c52f1ff3f2ac03b581cefe5
     <style type="text/css">
       body {
         padding-top: 70px;
         padding-bottom: 30px;
       }
     </style>
-<<<<<<< HEAD
-    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&signed_in=true&libraries=places"></script>
+    <script src="//maps.googleapis.com/maps/api/js?v=3.exp&signed_in=true&libraries=places"></script>
     <script>
 // This example displays an address form, using the autocomplete feature
 // of the Google Places API to help users fill in the information.
@@ -228,184 +216,15 @@ function getGeoCode(lat, lng) {
 
 
 
-=======
-    <title>Airup</title>
-  </head>
 
-<body role="document">
-
-    <!-- Fixed navbar -->
-    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
-      <div class="container">
-        <div class="navbar-header">
-          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-            <span class="sr-only">Toggle navigation</span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </button>
-          <a class="navbar-brand" href="#">Airup</a>
-        </div>
-         <div class="navbar-collapse collapse">
-          <ul class="nav navbar-nav">
-            <li class="active"><a href="/index.html">Home</a></li>
-            <li class="dropdown">
-              <a href="#" class="dropdown-toggle" data-toggle="dropdown">Platser <b class="caret"></b></a>
-              <ul class="dropdown-menu">
-                <li><a href="/index.html?lat=59.312963&lon=18.080363">Sofo, Stockholm</a></li>
-                <li><a href="/index.html?lat=59.315782&lon=18.033371">Hornstull, Stockholm</a></li>
-                <li><a href="/index.html?lat=59.324723&lon=18.069806">Gamla stan</a></li>
-                <li><a href="/index.html?lat=40.668090&lon=-73.980732">Park Slope</a></li>
-                <li><a href="/index.html?lat=37.800294&lon=-122.439601">Marina District(SF)</a></li>
-                <li><a href="/index.html?lat=52.536958&lon=13.408041">Prenzlauer Berg, Berlin</a></li>
-                <li><a href="/index.html?lat=51.532071&lon=-0.060360">London Shoreditch</a></li>
-                <li><a href="/index.html?lat=-23.560057&lon=-46.634334">Liberdade São Paulo</a></li>
-                <li><a href="/index.html?lat=57.70887&lon=11.97456">Gullbergsvass</a></li>
-                <li><a href="/index.html?lat=63.827743&lon=20.256825">Centrala stan (Umeå)</a></li>
-
-
-              </ul>
-            </li>
-          </ul>
-        </div> <!--/.nav-collapse -->
-      </div>
-    </div>
-
-    <div class="container theme-showcase" role="main">
-
-
-
-      <div class="page-header">
-        <h1>Locations</h1>
-        <code id="status"></code>
-        <code id="lat"></code>
-        <code id="long"></code>
-      </div>
-      <div class="row">
-        <div class="col-sm-12">
-          <h2 id="myhood"></h2>
-
-          <ul class="list-group" id="location">
-          </ul>
-        </div><!-- /.col-sm-4 -->
-      </div>
-
-
-
-
-
-    </div> <!-- /container -->
-
-
->>>>>>> a75f39671a91ccb50c52f1ff3f2ac03b581cefe5
     <!-- Bootstrap core JavaScript
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min.js"></script>
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
     <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
-<<<<<<< HEAD
+
   </div>
 </body>
 </html>
-=======
 
-
-    <script>
-
-    function getLocation() {
-      if (navigator.geolocation) {
-        return navigator.geolocation.getCurrentPosition(showPosition) 
-        //navigator.geolocation.getCurrentPosition(showPosition);
-      } else{
-        console.log("Nada")
-        //x.innerHTML="Geolocation is not supported by this browser.";
-      }
-    }
-      
-    var showPosition = function(position) {
-
-      // Do some reverse geocoding.
-
-      console.log(position.coords.latitude);
-      console.log(position.coords.longitude);
-      var lat = Math.round(position.coords.latitude*1000000)/1000000
-      var lon = Math.round(position.coords.longitude*1000000)/1000000
-
-      var gupLat = gup("lat");
-      var gupLon = gup("lon");
-
-      console.log(gupLat)
-      if (gupLat !== null && gupLon !== null) {
-        lat = gupLat;
-        lon = gupLon;
-      }
-
-      $("#long").text("Long: " + lon)
-      $("#lat").text("Lat: " + lat)
-      $.getJSON("http://maps.googleapis.com/maps/api/geocode/json?latlng=" + lat + "," + lon + "&sensor=true").done(function( data ) {
-        
-        $("#status").html("Status: <strong>" + data.status + "<strong>");
-
-        for (var i in data.results) {
-          var val = data.results[i];
-          $("#location").append('<li class="list-group-item">' + val.formatted_address + ' <code>' + val.address_components[0].types[0] + '</code></li>');  
-        }
-
-        for (var i in data.results) {
-          var val = data.results[i];
-          if (val.address_components[0].types[0] === "neighborhood") {
-            $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");  
-            return;
-
-          } else if (val.address_components[0].types[0] === "sublocality") {
-            $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");  
-            return;
-          } else if (val.address_components[0].types[0] === "administrative_area_level_4") {
-            $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");  
-            return;
-          } else if (val.address_components[0].types[0] === "administrative_area_level_3") {
-            $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");  
-            return;
-          }
-
-          
-        }
-        // jQuery.each(data.results, function( i, val ) {
-        //   //<li class="list-group-item">Cras justo odio</li>
-        //   // Look for sublocality
-        //   if (val.address_components[0].types[0] === "sublocality") {
-        //     $("#location").append('<li class="list-group-item"><strong>' + val.address_components[0].long_name + '</strong></li>');  
-
-        //   } else {
-        //     $("#location").append('<li class="list-group-item">' + val.formatted_address + ' #' + val.address_components[0].types[0] + '</li>');  
-        //   }
-
-        // });
-
-        var location = data.results[0].address_components[2].short_name
-        var locationDetailed = data.results[0].address_components[1].short_name + " " + data.results[0].address_components[0].short_name
-        // $("#location").html(location)
-        // $("#locationDetailed").html(locationDetailed)
-        // $("#location").attr("href","http://maps.google.com/?q=" + lat + "," + lon)
-      });
-    }
-
-    getLocation();
-
-function gup( name )
-{
-  name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
-  var regexS = "[\\?&]"+name+"=([^&#]*)";
-  var regex = new RegExp( regexS );
-  var results = regex.exec( window.location.href );
-  if( results == null )
-    return null;
-  else
-    return results[1];
-}
-
-    </script>
-  </body>
-</html>
->>>>>>> a75f39671a91ccb50c52f1ff3f2ac03b581cefe5
