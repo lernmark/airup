@@ -46,7 +46,7 @@ function fillInAddress() {
     // Get the place details from the autocomplete object.
     var place = autocomplete.getPlace();
     console.log(place);
-    $("#mapUrl").attr("href",place.url)
+
     var lat = place.geometry.location.k;
     var lng = place.geometry.location.D;
     console.log(lat);
@@ -83,7 +83,7 @@ function getGeoCode(lat, lng) {
   $.getJSON("https://maps.googleapis.com/maps/api/geocode/json?latlng=" + lat + "," + lng + "&sensor=true").done(function(data) {
 
     $("#status").html("Status: <strong>" + data.status + "<strong>");
-    
+
     for (var i in data.results) {
       var val = data.results[i];
       $("#location").append('<li class="list-group-item">' + val.formatted_address + ' <code>' + val.address_components[0].types[0] + '</code></li>');
@@ -203,12 +203,6 @@ function getGeoCode(lat, lng) {
 
         <ul class="list-group" id="location">
         </ul>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="col-sm-12">
-        <a href="" id="mapUrl" target="_blank">MAP</div>        
       </div>
     </div>
 
