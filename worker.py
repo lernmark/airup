@@ -28,6 +28,9 @@ Data from http://luft.hamburg.de/
 17SM - 53.560899,9.957213
 68HB - 53.592354,10.053774
 61WB -
+
+EAA
+http://fme.discomap.eea.europa.eu/fmedatastreaming/AirQuality/AirQualityUTDExport.fmw?FromDate=2015-03-17&ToDate=2015-03-17&Countrycode=se&InsertedSinceDate=&UpdatedSinceDate=&Pollutant=PM10,SO2,NO2,CO&Namespace=&Format=XML&UserToken=6C2D03D8-04E1-4D07-B856-D92ACE0FA832
 """
 import os
 import ast
@@ -46,12 +49,14 @@ import datetime
 import csv
 import StringIO
 import json
+from xml.dom import minidom
 from google.appengine.ext import db
 import hashlib
 
 GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s"
-#SERVICE_URL = "http://localhost:8888"
+#SERVICE_URL = "http://localhost:8080"
 SERVICE_URL = "https://bamboo-zone-547.appspot.com"
+# http://apis-explorer.appspot.com/apis-explorer/?base=http://localhost:8080/_ah/api#p/
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
 
@@ -76,6 +81,50 @@ class Records(db.Model):
     sourceId = db.StringProperty()
     zoneKey = db.StringProperty()
 
+class Eaa(webapp2.RequestHandler):
+
+
+    def get(self):
+
+        isotoday = datetime.datetime.now().date().isoformat()
+        country = "de"
+        url = "http://fme.discomap.eea.europa.eu/fmedatastreaming/AirQuality/AirQualityUTDExport.fmw?FromDate=" + isotoday + "&ToDate=" + isotoday + "&Countrycode=" + country + "&InsertedSinceDate=&UpdatedSinceDate=&Pollutant=PM10&Namespace=&Format=XML&UserToken=6C2D03D8-04E1-4D07-B856-D92ACE0FA832"
+        response = urllib2.urlopen(url)
+        xmldoc = minidom.parse(response)
+        records = xmldoc.getElementsByTagName('record')
+        self.response.write("<br/><code>" + url + " - " + str(len(records)) + " <code><br/>")
+
+        print 
+
+        def getText(nodelist):
+            rc = []
+            for node in nodelist:
+                if node.nodeType == node.TEXT_NODE:
+                    rc.append(node.data)
+            return ''.join(rc).encode("utf-8","ignore") 
+
+        for rec in records:
+            postdata = {}
+            station_code = rec.getElementsByTagName("station_code")[0]
+            station_name = rec.getElementsByTagName("station_name")[0]
+            pollutant = rec.getElementsByTagName("pollutant")[0]
+            samplingpoint_point = rec.getElementsByTagName("samplingpoint_point")[0]
+            value_numeric = rec.getElementsByTagName("value_numeric")[0]
+            posx = samplingpoint_point.attributes['x'].value
+            posy = samplingpoint_point.attributes['y'].value
+
+            postdata['sourceId'] = "EAA-"+getText(station_code.childNodes)
+            postdata['position'] = posy + "," + posx
+            postdata[getText(pollutant.childNodes).lower()] = str(getText(value_numeric.childNodes))
+
+            self.response.write(postdata)
+            req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
+            req.add_header('Content-Type', 'application/json')
+            response = urllib2.urlopen(req, json.dumps(postdata))            
+
+        self.response.write("<br/><code>EAA DONE<code><br/>")
+
+
 
 class Hamburg1(webapp2.RequestHandler):
 
@@ -83,7 +132,7 @@ class Hamburg1(webapp2.RequestHandler):
         print "HBG"
 
         def regData(url, sourceId, position):
-            response = urllib2.urlopen(url);
+            response = urllib2.urlopen(url)
             cr = csv.reader(response)
             postdata = {}
             rlista = list(cr)[5]
@@ -525,5 +574,6 @@ app = webapp2.WSGIApplication([
         ('/umea1', Umea),
         ('/hamburg1', Hamburg1),
         ('/sthlm', Sthlm),
+        ('/eaa',Eaa),
         ('/index.html', Index)
     ], debug=True)
