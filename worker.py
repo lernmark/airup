@@ -87,7 +87,7 @@ class Eaa(webapp2.RequestHandler):
     def get(self):
 
         isotoday = datetime.datetime.now().date().isoformat()
-        country = "de"
+        country = "fi"
         url = "http://fme.discomap.eea.europa.eu/fmedatastreaming/AirQuality/AirQualityUTDExport.fmw?FromDate=" + isotoday + "&ToDate=" + isotoday + "&Countrycode=" + country + "&InsertedSinceDate=&UpdatedSinceDate=&Pollutant=PM10&Namespace=&Format=XML&UserToken=6C2D03D8-04E1-4D07-B856-D92ACE0FA832"
         response = urllib2.urlopen(url)
         xmldoc = minidom.parse(response)
