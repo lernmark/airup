@@ -116,7 +116,8 @@ class Eaa(webapp2.RequestHandler):
             postdata['sourceId'] = "EAA-"+getText(station_code.childNodes)
             postdata['position'] = posy + "," + posx
             postdata[getText(pollutant.childNodes).lower()] = str(getText(value_numeric.childNodes))
-
+            postdata['co'] = "0.3"
+            postdata['no2'] = "0.4"
             self.response.write(postdata)
             req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
             req.add_header('Content-Type', 'application/json')
