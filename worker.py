@@ -124,9 +124,9 @@ class Eaa(webapp2.RequestHandler):
                 response = urllib2.urlopen(req, json.dumps(postdata))            
 
 
-        regData("se")
+        #regData("se")
         #regData("fi")
-        #regData("de")
+        regData("de")
         #regData("fr")
         self.response.write("<br/><code>EAA DONE<code><br/>")
 
