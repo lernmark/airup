@@ -86,43 +86,48 @@ class Eaa(webapp2.RequestHandler):
 
     def get(self):
 
-        isotoday = datetime.datetime.now().date().isoformat()
-        country = "fi"
-        url = "http://fme.discomap.eea.europa.eu/fmedatastreaming/AirQuality/AirQualityUTDExport.fmw?FromDate=" + isotoday + "&ToDate=" + isotoday + "&Countrycode=" + country + "&InsertedSinceDate=&UpdatedSinceDate=&Pollutant=PM10&Namespace=&Format=XML&UserToken=6C2D03D8-04E1-4D07-B856-D92ACE0FA832"
-        response = urllib2.urlopen(url)
-        xmldoc = minidom.parse(response)
-        records = xmldoc.getElementsByTagName('record')
-        self.response.write("<br/><code>" + url + " - " + str(len(records)) + " <code><br/>")
+        def regData(country):
+            isotoday = datetime.datetime.now().date().isoformat()
+            url = "http://fme.discomap.eea.europa.eu/fmedatastreaming/AirQuality/AirQualityUTDExport.fmw?FromDate=" + isotoday + "&ToDate=" + isotoday + "&Countrycode=" + country + "&InsertedSinceDate=&UpdatedSinceDate=&Pollutant=PM10&Namespace=&Format=XML&UserToken=6C2D03D8-04E1-4D07-B856-D92ACE0FA832"
+            response = urllib2.urlopen(url)
+            xmldoc = minidom.parse(response)
+            records = xmldoc.getElementsByTagName('record')
+            self.response.write("<br/><code>" + url + " - " + str(len(records)) + " <code><br/>")
 
-        print 
+            print 
 
-        def getText(nodelist):
-            rc = []
-            for node in nodelist:
-                if node.nodeType == node.TEXT_NODE:
-                    rc.append(node.data)
-            return ''.join(rc).encode("utf-8","ignore") 
+            def getText(nodelist):
+                rc = []
+                for node in nodelist:
+                    if node.nodeType == node.TEXT_NODE:
+                        rc.append(node.data)
+                return ''.join(rc).encode("utf-8","ignore") 
 
-        for rec in records:
-            postdata = {}
-            station_code = rec.getElementsByTagName("station_code")[0]
-            station_name = rec.getElementsByTagName("station_name")[0]
-            pollutant = rec.getElementsByTagName("pollutant")[0]
-            samplingpoint_point = rec.getElementsByTagName("samplingpoint_point")[0]
-            value_numeric = rec.getElementsByTagName("value_numeric")[0]
-            posx = samplingpoint_point.attributes['x'].value
-            posy = samplingpoint_point.attributes['y'].value
+            for rec in records:
+                postdata = {}
+                station_code = rec.getElementsByTagName("station_code")[0]
+                station_name = rec.getElementsByTagName("station_name")[0]
+                pollutant = rec.getElementsByTagName("pollutant")[0]
+                samplingpoint_point = rec.getElementsByTagName("samplingpoint_point")[0]
+                value_numeric = rec.getElementsByTagName("value_numeric")[0]
+                posx = samplingpoint_point.attributes['x'].value
+                posy = samplingpoint_point.attributes['y'].value
 
-            postdata['sourceId'] = "EAA-"+getText(station_code.childNodes)
-            postdata['position'] = posy + "," + posx
-            postdata[getText(pollutant.childNodes).lower()] = str(getText(value_numeric.childNodes))
-            postdata['co'] = "0.3"
-            postdata['no2'] = "0.4"
-            self.response.write(postdata)
-            req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
-            req.add_header('Content-Type', 'application/json')
-            response = urllib2.urlopen(req, json.dumps(postdata))            
+                postdata['sourceId'] = "EAA-"+getText(station_code.childNodes)
+                postdata['position'] = posy + "," + posx
+                postdata[getText(pollutant.childNodes).lower()] = str(getText(value_numeric.childNodes))
+                postdata['co'] = "0.3"
+                postdata['no2'] = "0.4"
+                self.response.write(postdata)
+                req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
+                req.add_header('Content-Type', 'application/json')
+                response = urllib2.urlopen(req, json.dumps(postdata))            
 
+
+        regData("se")
+        regData("fi")
+        regData("de")
+        regData("fr")
         self.response.write("<br/><code>EAA DONE<code><br/>")
 
 
