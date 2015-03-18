@@ -125,9 +125,9 @@ class Eaa(webapp2.RequestHandler):
 
 
         regData("se")
-        regData("fi")
-        regData("de")
-        regData("fr")
+        #regData("fi")
+        #regData("de")
+        #regData("fr")
         self.response.write("<br/><code>EAA DONE<code><br/>")
 
 
