@@ -199,6 +199,7 @@ function getGeoCode(lat, lng) {
         </div>
       </div>
     </div>
+
     <div class="row">
       <div class="col-sm-12">
         <h2 id="myhood"></h2>
@@ -210,10 +211,41 @@ function getGeoCode(lat, lng) {
 
     <div class="row">
       <div class="col-sm-12">
-        <a href="" id="mapUrl" target="_blank">MAP</div>        
+        <a href="" id="mapUrl" target="_blank">MAP</a>        
       </div>
     </div>
 
+    <div class="row">
+      <div class="col-sm-4">
+        <h3>Submit data</h3>
+        <form method="post" action="/submitToQueue">
+          <div class="form-group">
+            <label for="pm10">pm10</label>
+            <input type="text" class="form-control" id="pm10" name="pm10" placeholder="0.0">
+          </div>
+          <div class="form-group">
+            <label for="no2">no2 (ppm)</label>
+            <input type="text" class="form-control" id="no2" name="no2" placeholder="0.0">
+          </div>
+          <div class="form-group">
+            <label for="co">co (ppm)</label>
+            <input type="text" class="form-control" id="co" name="co" placeholder="0.0">
+          </div>
+                              
+          <div class="form-group">
+            <label for="exampleInputPassword1">position</label>
+            <input type="text" class="form-control" id="position" name="position" value="-23.560057,-46.634334">
+          </div>
+          <div class="form-group">
+            <label for="sourceId">sourceId</label>
+            <input type="text" class="form-control" id="sourceId" name="sourceId" value="ABC123">
+          </div>
+
+          <button type="submit" class="btn btn-default">Submit</button>
+
+        </form>
+      </div>
+    </div>
 
 
 

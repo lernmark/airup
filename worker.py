@@ -54,8 +54,8 @@ from google.appengine.ext import db
 import hashlib
 
 GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s"
-SERVICE_URL = "http://localhost:8080"
-#SERVICE_URL = "https://bamboo-zone-547.appspot.com"
+# SERVICE_URL = "http://localhost:8888"
+SERVICE_URL = "https://bamboo-zone-547.appspot.com"
 # http://apis-explorer.appspot.com/apis-explorer/?base=http://localhost:8080/_ah/api#p/
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
@@ -217,6 +217,51 @@ class Goteborg(webapp2.RequestHandler):
 		req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
 		req.add_header('Content-Type', 'application/json')
 		response = urllib2.urlopen(req, json.dumps(postdata))
+
+
+class SubmitToQueue(webapp2.RequestHandler):
+
+    def post(self):
+
+        postdata = {}
+
+        try:
+            pm10=self.request.get('pm10')
+            postdata['pm10'] = str(pm10)
+        except Exception, e:
+            print "no pm10"
+
+        try:
+            no2=self.request.get('no2')
+            postdata['no2'] = str(no2) 
+        except Exception, e:
+            print "No no2"
+
+        try:
+            co=self.request.get('co')
+            postdata['co'] = str(co)
+        except Exception, e:
+            print "No co"
+        
+        try:
+            sourceId=self.request.get('sourceId')
+            postdata['sourceId'] = sourceId
+        except Exception, e:
+            print "No sourceId"
+        
+        try:
+            position=self.request.get('position')
+            postdata['position'] = str(position)
+        except Exception, e:
+            print "No position"
+        
+        
+        self.response.write(postdata)
+
+        req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
+        req.add_header('Content-Type', 'application/json')
+        response = urllib2.urlopen(req, json.dumps(postdata))
+
 
 
 class Umea(webapp2.RequestHandler):
@@ -579,5 +624,6 @@ app = webapp2.WSGIApplication([
         ('/hamburg1', Hamburg1),
         ('/sthlm', Sthlm),
         ('/eaa',Eaa),
+        ('/submitToQueue',SubmitToQueue),
         ('/index.html', Index)
     ], debug=True)
