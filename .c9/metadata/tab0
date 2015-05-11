@@ -1,5 +1,0 @@
-<<<<<<< HEAD
-{"filter":false,"title":"index.html - Running","tooltip":"index.html - Running","undoManager":{"mark":0,"position":-1,"stack":[]},"output":{"id":"output765310","width":0,"height":0,"scrollTop":-1,"config":{"runner":"Python 2.7","command":"index.html","debug":true,"name":""},"running":{"pid":9768,"name":"output765310","running":2,"runner":[{"cmd":["run-apache2","-X"],"selector":"^.*\\.(php|phtml|html|shtml)$","info":"Starting Apache httpd, serving \\033[01;34m$hostname_path\\033[00m.","caption":"Apache httpd (PHP, HTML)","$builtin":true}],"debug":false}},"timestamp":1423151609475,"hash":"67452301efcdab8998badcfe10325476c3d2e1f0"}
-=======
-{"filter":false,"title":"bash - \"palle-airupbackend-1018818\"","tooltip":"bash - \"palle-airupbackend-1018818\"","undoManager":{"mark":0,"position":-1,"stack":[]},"terminal":{"id":"palle@airupbackend_860","cwd":"","width":1361,"height":251,"scrollTop":3475},"timestamp":1412337477798,"hash":"da39a3ee5e6b4b0d3255bfef95601890afd80709"}
->>>>>>> a75f39671a91ccb50c52f1ff3f2ac03b581cefe5

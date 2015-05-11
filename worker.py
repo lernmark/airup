@@ -55,7 +55,6 @@ import hashlib
 
 GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s"
 # SERVICE_URL = "http://localhost:8888"
-#SERVICE_URL = "http://localhost:8080"
 SERVICE_URL = "https://bamboo-zone-547.appspot.com"
 # http://apis-explorer.appspot.com/apis-explorer/?base=http://localhost:8080/_ah/api#p/
 
