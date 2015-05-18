@@ -1,136 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="">
-    <meta name="author" content="">
-    <link rel="stylesheet" type="text/css" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
-    <style type="text/css">
-      body {
-        padding-top: 70px;
-        padding-bottom: 30px;
-      }
-    </style>
-    <script src="//maps.googleapis.com/maps/api/js?v=3.exp&signed_in=true&libraries=places"></script>
-    <script>
-// This example displays an address form, using the autocomplete feature
-// of the Google Places API to help users fill in the information.
 
-var placeSearch, autocomplete;
-var componentForm = {
-  street_number: 'short_name',
-  route: 'long_name',
-  locality: 'long_name',
-  administrative_area_level_1: 'short_name',
-  country: 'long_name',
-  postal_code: 'short_name'
-};
-
-function initialize() {
-  // Create the autocomplete object, restricting the search
-  // to geographical location types.
-  autocomplete = new google.maps.places.Autocomplete(
-    /** @type {HTMLInputElement} */
-    (document.getElementById('autocomplete')), {
-      types: ['geocode']
-    });
-  // When the user selects an address from the dropdown,
-  // populate the address fields in the form.
-  google.maps.event.addListener(autocomplete, 'place_changed', function() {
-    fillInAddress();
-  });
-}
-
-// [START region_fillform]
-function fillInAddress() {
-    // Get the place details from the autocomplete object.
-    var place = autocomplete.getPlace();
-    console.log(place);
-    $("#mapUrl").attr("href",place.url)
-    var lat = place.geometry.location.k;
-    var lng = place.geometry.location.D;
-    console.log(lat);
-    console.log(lng);
-    getGeoCode(lat,lng);
-
-  }
-  // [END region_fillform]
-
-// [START region_geolocation]
-// Bias the autocomplete object to the user's geographical location,
-// as supplied by the browser's 'navigator.geolocation' object.
-function geolocate() {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(function(position) {
-        var geolocation = new google.maps.LatLng(
-          position.coords.latitude, position.coords.longitude);
-        var circle = new google.maps.Circle({
-          center: geolocation,
-          radius: position.coords.accuracy
-        });
-        autocomplete.setBounds(circle.getBounds());
-      });
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <link rel="stylesheet" type="text/css" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+  <style type="text/css">
+    body {
+      padding-top: 70px;
+      padding-bottom: 30px;
     }
-  }
-  // [END region_geolocation]
+  </style>
+  <script src="//maps.googleapis.com/maps/api/js?v=3.exp&signed_in=true&libraries=places"></script>
 
-function getGeoCode(lat, lng) {
-  
-  $("#location").html("");
-
-  $("#long").text("Long: " + lng)
-  $("#lat").text("Lat: " + lat)
-  $.getJSON("https://maps.googleapis.com/maps/api/geocode/json?latlng=" + lat + "," + lng + "&sensor=true").done(function(data) {
-
-    $("#status").html("Status: <strong>" + data.status + "<strong>");
-    
-    for (var i in data.results) {
-      var val = data.results[i];
-      $("#location").append('<li class="list-group-item">' + val.formatted_address + ' <code>' + val.address_components[0].types[0] + '</code></li>');
-    }
-
-    for (var i in data.results) {
-      var val = data.results[i];
-      if (val.address_components[0].types[0] === "neighborhood") {
-        $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
-        return;
-
-      }
-      else if (val.address_components[0].types[0] === "sublocality") {
-        $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
-        return;
-      }
-      else if (val.address_components[0].types[0] === "sublocality_level_2") {
-        $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
-        return;
-      }
-      else if (val.address_components[0].types[0] === "sublocality_level_1") {
-        $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
-        return;
-      }
-      else if (val.address_components[0].types[0] === "administrative_area_level_4") {
-        $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
-        return;
-      }
-      else if (val.address_components[0].types[0] === "administrative_area_level_3") {
-        $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
-        return;
-      }
-
-
-    }
-    //var location = data.results[0].address_components[2].short_name;
-    //var locationDetailed = data.results[0].address_components[1].short_name + " " + data.results[0].address_components[0].short_name;
-  });
-
-
-}
-
-    </script>
-
-  </head>
+</head>
 
 <body onload="initialize()">
   <!-- Fixed navbar -->
@@ -211,7 +97,7 @@ function getGeoCode(lat, lng) {
 
     <div class="row">
       <div class="col-sm-12">
-        <a href="" id="mapUrl" target="_blank">MAP</a>        
+        <a href="" id="mapUrl" target="_blank">MAP</a>
       </div>
     </div>
 
@@ -231,7 +117,7 @@ function getGeoCode(lat, lng) {
             <label for="co">co (ppm)</label>
             <input type="text" class="form-control" id="co" name="co" placeholder="0.0">
           </div>
-                              
+
           <div class="form-group">
             <label for="lat">Latitude</label>
             <input type="text" class="form-control" id="lat" name="lat" value="-23.560057">
@@ -259,8 +145,140 @@ function getGeoCode(lat, lng) {
     <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min.js"></script>
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
     <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+    
+  <script>
+    // This example displays an address form, using the autocomplete feature
+    // of the Google Places API to help users fill in the information.
+
+    var placeSearch, autocomplete;
+    var componentForm = {
+      street_number: 'short_name',
+      route: 'long_name',
+      locality: 'long_name',
+      administrative_area_level_1: 'short_name',
+      country: 'long_name',
+      postal_code: 'short_name'
+    };
+    
+
+    function getParameterByName(name) {
+        name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+        var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+            results = regex.exec(location.search);
+        return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+    }
+    
+
+
+    function initialize() {
+      // Create the autocomplete object, restricting the search
+      // to geographical location types.
+      autocomplete = new google.maps.places.Autocomplete(
+        /** @type {HTMLInputElement} */
+        (document.getElementById('autocomplete')), {
+          types: ['geocode']
+        });
+      // When the user selects an address from the dropdown,
+      // populate the address fields in the form.
+      google.maps.event.addListener(autocomplete, 'place_changed', function() {
+        fillInAddress();
+      });
+    }
+
+    // [START region_fillform]
+    function fillInAddress() {
+        // Get the place details from the autocomplete object.
+        var place = autocomplete.getPlace();
+        console.log(place);
+        $("#mapUrl").attr("href", place.url)
+        var lat = place.geometry.location.A;
+        var lng = place.geometry.location.F;
+        console.log(lat);
+        console.log(lng);
+        getGeoCode(lat, lng);
+
+      }
+      // [END region_fillform]
+
+    // [START region_geolocation]
+    // Bias the autocomplete object to the user's geographical location,
+    // as supplied by the browser's 'navigator.geolocation' object.
+    function geolocate() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function(position) {
+            var geolocation = new google.maps.LatLng(
+              position.coords.latitude, position.coords.longitude);
+            var circle = new google.maps.Circle({
+              center: geolocation,
+              radius: position.coords.accuracy
+            });
+            autocomplete.setBounds(circle.getBounds());
+          });
+        }
+      }
+      // [END region_geolocation]
+
+    function getGeoCode(lat, lng) {
+
+      $("#location").html("");
+
+      $("#long").text("Long: " + lng)
+      $("#lat").text("Lat: " + lat)
+      $.getJSON("https://maps.googleapis.com/maps/api/geocode/json?latlng=" + lat + "," + lng + "&sensor=true").done(function(data) {
+
+        $("#status").html("Status: <strong>" + data.status + "<strong>");
+
+        for (var i in data.results) {
+          var val = data.results[i];
+          $("#location").append('<li class="list-group-item">' + val.formatted_address + ' <code>' + val.address_components[0].types[0] + '</code></li>');
+        }
+
+        for (var i in data.results) {
+          var val = data.results[i];
+          if (val.address_components[0].types[0] === "neighborhood") {
+            $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
+            return;
+
+          }
+          else if (val.address_components[0].types[0] === "sublocality") {
+            $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
+            return;
+          }
+          else if (val.address_components[0].types[0] === "sublocality_level_2") {
+            $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
+            return;
+          }
+          else if (val.address_components[0].types[0] === "sublocality_level_1") {
+            $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
+            return;
+          }
+          else if (val.address_components[0].types[0] === "administrative_area_level_4") {
+            $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
+            return;
+          }
+          else if (val.address_components[0].types[0] === "administrative_area_level_3") {
+            $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
+            return;
+          }
+
+
+        }
+        //var location = data.results[0].address_components[2].short_name;
+        //var locationDetailed = data.results[0].address_components[1].short_name + " " + data.results[0].address_components[0].short_name;
+      });
+
+
+    }
+
+    var urlLat = getParameterByName("lat");
+    var urlLon = getParameterByName("lon");
+    if (urlLat != "" && urlLon != "") {
+      getGeoCode(urlLat, urlLon);
+    }      
+      
+    </script>
 
   </div>
 </body>
-</html>
 
+</html>
