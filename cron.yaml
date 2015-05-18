@@ -1,7 +1,37 @@
 cron:
 - description: Import data from Göteborg
   url: /gbg1
-  schedule: every 1 hours
+  schedule: every 130 minutes
 - description: Import data from Umeå
   url: /umea1
-  schedule: every 1 hours
+  schedule: every 188 minutes
+- description: Import data from Hamburg
+  url: /hamburg1
+  schedule: every 122 minutes
+- description: Import data from EAA
+  url: /eaa?country=se
+  schedule: every 710 minutes
+- description: Import data from EAA
+  url: /eaa?country=dk
+  schedule: every 730 minutes
+- description: Import data from EAA
+  url: /eaa?country=fi
+  schedule: every 725 minutes
+- description: Import data from EAA
+  url: /eaa?country=de
+  schedule: every 728 minutes
+- description: Import data from EAA
+  url: /eaa?country=es
+  schedule: every 740 minutes
+- description: Import data from EAA
+  url: /eaa?country=fr
+  schedule: every 750 minutes
+- description: Import data from EAA
+  url: /eaa?country=pl
+  schedule: every 760 minutes
+- description: Import data from EAA
+  url: /eaa?country=it
+  schedule: every 770 minutes
+- description: Import data from EAA
+  url: /eaa?country=nl
+  schedule: every 780 minutes
