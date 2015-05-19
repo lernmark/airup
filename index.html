@@ -269,7 +269,6 @@
             if (val.address_components[0].types[0] === "neighborhood") {
               $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
               return;
-
             }
             else if (val.address_components[0].types[0] === "sublocality") {
               $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
@@ -289,6 +288,9 @@
             }
             else if (val.address_components[0].types[0] === "administrative_area_level_3") {
               $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
+              return;
+            } else {
+              $("#myhood").html("<code>Unknown location</code>");
               return;
             }
 
