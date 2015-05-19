@@ -115,21 +115,20 @@
 
 
     <div class="row">
-      <div class="col-sm-12">
+      <div class="col-sm-8">
         <h2 id="myhood"></h2>
         <dl class="dl-horizontal" id="location"></dl>
       </div>
+      <div class="col-sm-4">
+        <a href="" class="btn btn-default pull-right" id="mapUrl" target="_blank" style="display:none"> <span class="glyphicon glyphicon-map-marker" aria-hidden="true"></span> MAP</a>
+      </div>
     </div>
+    
+    
 
     <div class="row">
       <div class="col-sm-12">
         <div class="alert alert-success" id="status" style="display:none"></div>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="col-sm-12">
-        <a href="" id="mapUrl" target="_blank">MAP</a>
       </div>
     </div>
 
@@ -222,11 +221,9 @@
           // Get the place details from the autocomplete object.
           var place = autocomplete.getPlace();
           console.log(place);
-          $("#mapUrl").attr("href", place.url)
+          $("#mapUrl").attr("href", place.url).show();
           var lat = place.geometry.location.A;
           var lng = place.geometry.location.F;
-          console.log(lat);
-          console.log(lng);
           getGeoCode(lat, lng);
 
         }
@@ -256,6 +253,7 @@
 
         $("input.lon").val(lng);
         $("input.lat").val(lat);
+        $("#mapUrl").attr("href", "http://maps.google.com/maps?q=" + lat + "," + lng).show();
 
         $.getJSON("https://maps.googleapis.com/maps/api/geocode/json?latlng=" + lat + "," + lng + "&sensor=true").done(function(data) {
 
