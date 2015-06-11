@@ -19,6 +19,7 @@ Wellington - -41.296435,174.776527
 Sidney - -33.896549,151.179963
 Kitazawa - 35.663365,139.668332
 Nairobi - -1.282794,36.828232
+Canary Warf, London - 51.501538, -0.015757
 
 Barrsatra - 60.620428,16.750116
 New Holland/Admiralteysky District St Petersburg - 59.929506,30.289360
