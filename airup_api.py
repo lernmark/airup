@@ -40,6 +40,9 @@ class Record(messages.Message):
     positionLabels = messages.StringField(7)
     sourceId = messages.StringField(8, required=True)
 
+class Records(messages.Message):
+    records = messages.MessageField(Record, 1, repeated=True)
+
 class Station(messages.Message):
     sourceId = messages.StringField(1)
     position = messages.StringField(2)
@@ -111,6 +114,40 @@ class ZoneMessage(messages.Message):
     breakpoints = messages.MessageField(Breakpoints, 4, repeated=True)
     timestamp = messages.FloatField(5)
     facts = messages.MessageField(FactMessage, 6, repeated=True)
+
+def getRawData(offset):
+
+    try:
+        offset = str(int(offset)*int(300))
+        dataArr = []
+        dataResult = db.GqlQuery("SELECT * FROM Records LIMIT 300 OFFSET " + offset)
+        for d in dataResult:
+            # datetime.strptime("2015-12-16 21:10:22.670000"[0:19],"%Y-%m-%d %H:%M:%S")
+            # time.strptime(str(d.timestamp),"%Y-%m-%d %H:%M:%S.%f")
+            #print str(d.timestamp)[0:19]
+            #print "123456789"[2:5]
+
+            dataArr.append(
+                Record(
+                    timestamp = str(d.timestamp),
+
+                    pm10 = d.pm10,
+                    co = d.co,
+                    no2 = d.no2,
+                    index = d.index,
+                    position = str(d.position),
+                    positionLabels = d.positionLabels,
+                    sourceId = d.sourceId
+                )
+            )
+
+        return Records(
+            records=dataArr
+        )
+
+    except (IndexError, TypeError):
+        raise endpoints.NotFoundException(IndexError)
+
 
 
 def generateZoneMessage(zone):
@@ -225,7 +262,7 @@ class AirupApi(remote.Service):
         recPayload["co"] = None
         recPayload["no2"] = None
         recPayload["sourceId"] = None
-        
+
         recPayload["co"] = request.co
         recPayload["pm10"] = request.pm10
         recPayload["no2"] = request.no2
@@ -251,7 +288,7 @@ class AirupApi(remote.Service):
     @endpoints.method(LATLNG_RESOURCE, ZoneMessage, path='location/lat/{lat}/lng/{lng}', http_method='GET', name='report.getLocation')
     def location_get(self, request):
         """
-        Find the zone for current location.
+        Find the zone for current location...
         """
         latlng = request.lat + "," + request.lng
 
@@ -262,13 +299,21 @@ class AirupApi(remote.Service):
         except Exception, e:
             return ZoneMessage()
 
-
     LOCATIONS_RESOURCE = endpoints.ResourceContainer(message_types.VoidMessage,zone=messages.StringField(1,repeated=True))
     @endpoints.method(LOCATIONS_RESOURCE, ZoneMessage, path='zones', http_method='GET', name='zones.getRequestedZones')
     def locations_get(self, request):
         """
-        API that returns specified zones or all zones
+        API that returns specified zones or all zones...
         """
         return generateZoneMessage(request.zone)
+
+    RAWDATA_RESOURCE = endpoints.ResourceContainer(message_types.VoidMessage,offset=messages.StringField(1,repeated=False))
+    @endpoints.method(RAWDATA_RESOURCE, Records, path='rawdata', http_method='GET', name='data.getRawData')
+    def rawdata_get(self, request):
+        """
+        API that returns Raw data...
+        """
+        return getRawData(request.offset)
+
 
 APPLICATION = endpoints.api_server([AirupApi])
