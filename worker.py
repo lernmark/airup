@@ -40,6 +40,7 @@ import jinja2
 import webapp2
 import json
 import urllib2
+import base64
 from google.appengine.api import taskqueue
 from google.appengine.ext import db
 from protorpc import messages
@@ -82,6 +83,49 @@ class Records(db.Model):
     sourceId = db.StringProperty()
     zoneKey = db.StringProperty()
 
+class Foobot(webapp2.RequestHandler):
+    def get(self):
+        isotoday = datetime.datetime.now().date().isoformat()
+        print isotoday
+        urlLogin = 'https://api.foobot.io/v2/user/lars@wattsgard.se/login/'
+        urlDevice = 'https://api.foobot.io/v2/owner/lars@wattsgard.se/device/'
+        urlData = 'https://api.foobot.io/v2/device/%s/datapoint/2015-12-16T011:00/2015-12-16T12:00:00/0/'
+        # First. Login and get the token
+        request = urllib2.Request(urlLogin)
+        base64string = base64.encodestring('%s:%s' % ("lars@wattsgard.se", "AirUp123")).replace('\n', '')
+        request.add_header("Authorization", "Basic %s" % base64string)
+        response = urllib2.urlopen(request)
+        token = response.info().getheader('X-AUTH-TOKEN')
+        print token
+        # 2 use the token to get all devices
+        request = urllib2.Request(urlDevice)
+        request.add_header("X-AUTH-TOKEN", token)
+        response = urllib2.urlopen(request)
+        devices = json.loads(response.read())
+        firstDevice = devices[0]['uuid']
+        for dev in devices:
+            postdata = {}
+            print dev
+            # using first device uuid get all data (within the dates)
+            request = urllib2.Request(urlData % dev['uuid'])
+            request.add_header("X-AUTH-TOKEN", token)
+            response = urllib2.urlopen(request)
+            fooData = response.read()
+            headers = ("s",
+                "ugm3",
+                "C",
+                "pc",
+                "ppm",
+                "ppb",
+                "%")
+            j = json.loads(fooData)
+            print j
+        ddd = j['datapoints']
+        print "LEN: "
+        print len(ddd)
+        self.response.write(ddd[len(ddd)-1])
+
+
 class Eaa(webapp2.RequestHandler):
 
 
@@ -95,14 +139,14 @@ class Eaa(webapp2.RequestHandler):
             records = xmldoc.getElementsByTagName('record')
             self.response.write("<br/><code>" + url + " - " + str(len(records)) + " <code><br/>")
 
-            print 
+            print
 
             def getText(nodelist):
                 rc = []
                 for node in nodelist:
                     if node.nodeType == node.TEXT_NODE:
                         rc.append(node.data)
-                return ''.join(rc).encode("utf-8","ignore") 
+                return ''.join(rc).encode("utf-8","ignore")
 
             for rec in records:
                 postdata = {}
@@ -122,7 +166,7 @@ class Eaa(webapp2.RequestHandler):
                 self.response.write(postdata)
                 req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
                 req.add_header('Content-Type', 'application/json')
-                response = urllib2.urlopen(req, json.dumps(postdata))            
+                response = urllib2.urlopen(req, json.dumps(postdata))
 
 
         country = self.request.get('country')
@@ -180,8 +224,8 @@ class Hamburg1(webapp2.RequestHandler):
         regData("http://hamburg.luftmessnetz.de/station/68HB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-68HB", "53.592354,10.053774")
         regData("http://hamburg.luftmessnetz.de/station/24FL/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-24FL", "53.638128,9.996872")
         regData("http://hamburg.luftmessnetz.de/station/61WB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-61WB", "53.508315,9.990633")
-		
-		
+
+
 class Goteborg(webapp2.RequestHandler):
 
     def get(self):
@@ -201,7 +245,7 @@ class Goteborg(webapp2.RequestHandler):
 			postdata['no2'] = str(((no2/1000.0000)*24.4500)/46.0100) #Convert mg/m3 to ppm
 		except Exception, e:
 			print "No no2"
-			#postdata['no2'] = 0		
+			#postdata['no2'] = 0
 
 		try:
 			co = data['AirQuality']['CO']['Value']
@@ -209,10 +253,10 @@ class Goteborg(webapp2.RequestHandler):
 		except Exception, e:
 			print "No co"
 			#postdata['co'] = 0
-		
+
 		postdata['sourceId'] = 'GBG1'
 		postdata['position'] = '57.708870,11.974560'
-		
+
 		self.response.write(postdata)
 
 		req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
@@ -234,7 +278,7 @@ class SubmitToQueue(webapp2.RequestHandler):
 
         try:
             no2=self.request.get('no2')
-            postdata['no2'] = str(no2) 
+            postdata['no2'] = str(no2)
         except Exception, e:
             print "No no2"
 
@@ -243,21 +287,21 @@ class SubmitToQueue(webapp2.RequestHandler):
             postdata['co'] = str(co)
         except Exception, e:
             print "No co"
-        
+
         try:
             sourceId=self.request.get('sourceId')
             postdata['sourceId'] = sourceId
         except Exception, e:
             print "No sourceId"
-        
+
         try:
             lat=self.request.get('lat')
             lon=self.request.get('lon')
             postdata['position'] = lat + ',' + lon
         except Exception, e:
             print "No position"
-        
-        
+
+
         self.response.write(postdata)
 
         req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
@@ -284,7 +328,7 @@ class Umea(webapp2.RequestHandler):
 			no2 = data['result']['records'][0]['NO2']
 			postdata['no2'] = str(((no2/1000.0000)*24.4500)/46.0100) #Convert mg/m3 to ppm
 		except Exception, e:
-			no2 = 0		
+			no2 = 0
 
 		postdata['sourceId'] = 'UMEA1'
 		postdata['position'] = '63.827743,20.256825'
@@ -307,9 +351,9 @@ class Sthlm(webapp2.RequestHandler):
 
 
 tableAqiIndex = [ range(0, 50, 1),range(51, 100, 1),range(101, 150, 1),range(151, 200, 1),range(201, 300, 1),range(301, 400, 1),range(401, 500, 1) ]
-tableCo = [ range(0, 44, 1),range(45, 94, 1),range(95, 124, 1),range(125, 154, 1),range(155, 304, 1),range(305, 404, 1),range(405, 504, 1) ] 
-tableNo2 = [ range(0, 53, 1),range(54, 100, 1),range(101, 360, 1),range(361, 640, 1),range(650, 1240, 1),range(1250, 1640, 1),range(1650, 2040, 1) ] 
-tablePm10 = [ range(0, 54, 1),range(55, 154, 1),range(155, 254, 1),range(255, 354, 1),range(355, 424, 1),range(425, 504, 1),range(505, 604, 1) ] 
+tableCo = [ range(0, 44, 1),range(45, 94, 1),range(95, 124, 1),range(125, 154, 1),range(155, 304, 1),range(305, 404, 1),range(405, 504, 1) ]
+tableNo2 = [ range(0, 53, 1),range(54, 100, 1),range(101, 360, 1),range(361, 640, 1),range(650, 1240, 1),range(1250, 1640, 1),range(1650, 2040, 1) ]
+tablePm10 = [ range(0, 54, 1),range(55, 154, 1),range(155, 254, 1),range(255, 354, 1),range(355, 424, 1),range(425, 504, 1),range(505, 604, 1) ]
 indexLables = ["Good","Moderate","Unhealthy for Sensitive Group","Unhealthy","Very Unhealthy","Hazardous","Hazardous"]
 
 
@@ -626,6 +670,7 @@ app = webapp2.WSGIApplication([
         ('/hamburg1', Hamburg1),
         ('/sthlm', Sthlm),
         ('/eaa',Eaa),
+        ('/foobot',Foobot),
         ('/submitToQueue',SubmitToQueue),
         ('/index.html', Index)
     ], debug=True)
