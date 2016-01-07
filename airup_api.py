@@ -115,7 +115,7 @@ class ZoneMessage(messages.Message):
     timestamp = messages.FloatField(5)
     facts = messages.MessageField(FactMessage, 6, repeated=True)
 
-def getRawData(offset):
+def getRawData(offset,prefix):
 
     try:
         offset = str(int(offset)*int(300))
@@ -307,13 +307,13 @@ class AirupApi(remote.Service):
         """
         return generateZoneMessage(request.zone)
 
-    RAWDATA_RESOURCE = endpoints.ResourceContainer(message_types.VoidMessage,offset=messages.StringField(1,repeated=False))
+    RAWDATA_RESOURCE = endpoints.ResourceContainer(message_types.VoidMessage,offset=messages.StringField(1,variant=messages.Variant.STRING),prefix=messages.StringField(1,variant=messages.Variant.STRING))
     @endpoints.method(RAWDATA_RESOURCE, Records, path='rawdata', http_method='GET', name='data.getRawData')
     def rawdata_get(self, request):
         """
         API that returns Raw data...
         """
-        return getRawData(request.offset)
+        return getRawData(request.offset, "EAA")
 
 
 APPLICATION = endpoints.api_server([AirupApi])

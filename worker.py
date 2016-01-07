@@ -48,6 +48,8 @@ from protorpc import message_types
 from protorpc import remote
 from random import randrange
 import datetime
+import calendar
+import time
 import csv
 import StringIO
 import json
@@ -86,17 +88,17 @@ class Records(db.Model):
 class Foobot(webapp2.RequestHandler):
     def get(self):
         isotoday = datetime.datetime.now().date().isoformat()
-        print isotoday
+        #print isotoday
         urlLogin = 'https://api.foobot.io/v2/user/lars@wattsgard.se/login/'
         urlDevice = 'https://api.foobot.io/v2/owner/lars@wattsgard.se/device/'
-        urlData = 'https://api.foobot.io/v2/device/%s/datapoint/2015-12-16T011:00/2015-12-16T12:00:00/0/'
+        urlData = 'https://api.foobot.io/v2/device/%s/datapoint/2015-12-22T011:00/2015-12-22T12:00:00/0/'
         # First. Login and get the token
         request = urllib2.Request(urlLogin)
         base64string = base64.encodestring('%s:%s' % ("lars@wattsgard.se", "AirUp123")).replace('\n', '')
         request.add_header("Authorization", "Basic %s" % base64string)
         response = urllib2.urlopen(request)
         token = response.info().getheader('X-AUTH-TOKEN')
-        print token
+        #print token
         # 2 use the token to get all devices
         request = urllib2.Request(urlDevice)
         request.add_header("X-AUTH-TOKEN", token)
@@ -119,27 +121,35 @@ class Foobot(webapp2.RequestHandler):
                 "ppb",
                 "%")
             j = json.loads(fooData)
-            print j
-        ddd = j['datapoints']
-        print "LEN: "
-        print len(ddd)
-        self.response.write(ddd[len(ddd)-1])
+            dp = j['datapoints']
+
+            if dp:
+                latest = dp[0]
+                if latest:
+                    postdata = {}
+                    time = latest[0]
+                    pm = latest[1]
+                    postdata['sourceId'] = dev['name']
+                    postdata['position'] = "59.312963,18.080363"
+                    postdata['pm10'] = str(pm)
+                    print postdata
+                    taskqueue.add(url='/worker', params=postdata)
+                    #req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
+                    #req.add_header('Content-Type', 'application/json')
+                    #response = urllib2.urlopen(req, json.dumps(postdata))
 
 
 class Eaa(webapp2.RequestHandler):
-
 
     def get(self):
 
         def regData(country):
             isotoday = datetime.datetime.now().date().isoformat()
             url = "http://fme.discomap.eea.europa.eu/fmedatastreaming/AirQuality/AirQualityUTDExport.fmw?FromDate=" + isotoday + "&ToDate=" + isotoday + "&Countrycode=" + country + "&InsertedSinceDate=&UpdatedSinceDate=&Pollutant=PM10&Namespace=&Format=XML&UserToken=6C2D03D8-04E1-4D07-B856-D92ACE0FA832"
-            response = urllib2.urlopen(url, timeout = 20)
+            response = urllib2.urlopen(url, timeout = 90)
             xmldoc = minidom.parse(response)
             records = xmldoc.getElementsByTagName('record')
             self.response.write("<br/><code>" + url + " - " + str(len(records)) + " <code><br/>")
-
-            print
 
             def getText(nodelist):
                 rc = []
@@ -164,9 +174,10 @@ class Eaa(webapp2.RequestHandler):
                 postdata['co'] = "0.3"
                 postdata['no2'] = "0.4"
                 self.response.write(postdata)
-                req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
-                req.add_header('Content-Type', 'application/json')
-                response = urllib2.urlopen(req, json.dumps(postdata))
+                #req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
+                #req.add_header('Content-Type', 'application/json')
+                #response = urllib2.urlopen(req, json.dumps(postdata))
+                taskqueue.add(url='/worker', params=postdata)
 
 
         country = self.request.get('country')
@@ -178,12 +189,18 @@ class Eaa(webapp2.RequestHandler):
 class Hamburg1(webapp2.RequestHandler):
 
     def get(self):
-        print "HBG"
+        #print "HBG"
 
         def regData(url, sourceId, position):
             response = urllib2.urlopen(url)
             cr = csv.reader(response)
-            postdata = {}
+            postdata = {
+                'sourceId': '',
+                'position': '',
+                'pm10': '',
+                'co': '',
+                'no2': ''
+            }
             rlista = list(cr)[5]
             co = rlista[1]
 
@@ -199,15 +216,16 @@ class Hamburg1(webapp2.RequestHandler):
             except Exception, e:
                 print "No no2"
 
-            postdata['sourceId'] = sourceId
-            postdata['position'] = position
+            postdata.sourceId = sourceId
+            postdata.position = position
 
             #req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
-            req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
-            req.add_header('Content-Type', 'application/json')
-            response = urllib2.urlopen(req, json.dumps(postdata))
+            #req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
+            #req.add_header('Content-Type', 'application/json')
+            #response = urllib2.urlopen(req, json.dumps(postdata))
 
             self.response.write("<br/><code>DONE " + sourceId + "<code><br/>")
+            taskqueue.add(url='/worker', params=postdata)
 
 
         """
@@ -218,50 +236,57 @@ class Hamburg1(webapp2.RequestHandler):
         68HB - 53.592354,10.053774
         61WB - 53.508315,9.990633
         """
-
-        regData("http://hamburg.luftmessnetz.de/station/70MB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-70MB", "53.555555,9.943407")
-        regData("http://hamburg.luftmessnetz.de/station/17SM/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-17SM", "53.560899,9.957213")
-        regData("http://hamburg.luftmessnetz.de/station/68HB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-68HB", "53.592354,10.053774")
-        regData("http://hamburg.luftmessnetz.de/station/24FL/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-24FL", "53.638128,9.996872")
-        regData("http://hamburg.luftmessnetz.de/station/61WB/data.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-61WB", "53.508315,9.990633")
+                #http://hamburg.luftmessnetz.de/station/24FL.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday&searchfrom=02.01.2016+00%3A00&searchuntil=03.01.2016+00%3A00
+        regData("http://hamburg.luftmessnetz.de/station/70MB.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-70MB", "53.555555,9.943407")
+        regData("http://hamburg.luftmessnetz.de/station/17SM.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-17SM", "53.560899,9.957213")
+        regData("http://hamburg.luftmessnetz.de/station/68HB.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-68HB", "53.592354,10.053774")
+        regData("http://hamburg.luftmessnetz.de/station/24FL.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-24FL", "53.638128,9.996872")
+        regData("http://hamburg.luftmessnetz.de/station/61WB.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-61WB", "53.508315,9.990633")
 
 
 class Goteborg(webapp2.RequestHandler):
 
     def get(self):
-		url = "http://data.goteborg.se/AirQualityService/v1.0/LatestMeasurement/4abad3dd-5d24-4c9c-9d17-79a946abe6c2?format=json"
-		response = urllib2.urlopen(url);
-		data = json.loads(response.read())
-		postdata = {}
-		try:
-			pm10 = data['AirQuality']['PM10']['Value']
-			postdata['pm10'] = str(pm10)
-		except Exception, e:
-			print "no pm10"
-			#postdata['pm10'] = 0
+        url = "http://data.goteborg.se/AirQualityService/v1.0/LatestMeasurement/4abad3dd-5d24-4c9c-9d17-79a946abe6c2?format=json"
+        response = urllib2.urlopen(url);
+        data = json.loads(response.read())
 
-		try:
-			no2 = data['AirQuality']['NO2']['Value']
-			postdata['no2'] = str(((no2/1000.0000)*24.4500)/46.0100) #Convert mg/m3 to ppm
-		except Exception, e:
-			print "No no2"
-			#postdata['no2'] = 0
+        postdata = {
+            'sourceId': 'GBG1',
+            'position': '57.708870,11.974560',
+            'pm10': '',
+            'co': '',
+            'no2': ''
+        }
+        try:
+        	pm10 = data['AirQuality']['PM10']['Value']
+        	postdata.pm10 = str(pm10)
+        except Exception, e:
+        	print "no pm10"
+        	#postdata['pm10'] = 0
 
-		try:
-			co = data['AirQuality']['CO']['Value']
-			postdata['co'] = str(((co/1000.0000)*24.4500)/28.0100) #Convert mg/m3 to ppm
-		except Exception, e:
-			print "No co"
-			#postdata['co'] = 0
+        try:
+        	no2 = data['AirQuality']['NO2']['Value']
+        	postdata.no2 = str(((no2/1000.0000)*24.4500)/46.0100) #Convert mg/m3 to ppm
+        except Exception, e:
+        	print "No no2"
+        	#postdata['no2'] = 0
 
-		postdata['sourceId'] = 'GBG1'
-		postdata['position'] = '57.708870,11.974560'
+        try:
+        	co = data['AirQuality']['CO']['Value']
+        	postdata.co = str(((co/1000.0000)*24.4500)/28.0100) #Convert mg/m3 to ppm
+        except Exception, e:
+        	print "No co"
+        	#postdata['co'] = 0
 
-		self.response.write(postdata)
 
-		req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
-		req.add_header('Content-Type', 'application/json')
-		response = urllib2.urlopen(req, json.dumps(postdata))
+        taskqueue.add(url='/worker', params=postdata)
+
+        #req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
+        #req.add_header('Content-Type', 'application/json')
+        #response = urllib2.urlopen(req, json.dumps(postdata))
+        self.response.write(postdata)
+
 
 
 class SubmitToQueue(webapp2.RequestHandler):
@@ -304,39 +329,57 @@ class SubmitToQueue(webapp2.RequestHandler):
 
         self.response.write(postdata)
 
-        req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
-        req.add_header('Content-Type', 'application/json')
-        response = urllib2.urlopen(req, json.dumps(postdata))
+        #req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
+        #req.add_header('Content-Type', 'application/json')
+        #response = urllib2.urlopen(req, json.dumps(postdata))
+        taskqueue.add(url='/worker', params=postdata)
 
 
 
 class Umea(webapp2.RequestHandler):
     def get(self):
-		logging.info("UMEA")
-		url = "http://ckan.openumea.se/api/action/datastore_search?resource_id=27fb8bcc-23cb-4e85-b5b4-fde68a8ef93a&limit=1&sort=M%C3%A4ttidpunkt%20desc"
-		response = urllib2.urlopen(url);
-		data = json.loads(response.read())
+        #print "#### UMEA ####"
+    	#logging.info("UMEA")
+    	url = "http://ckan.openumea.se/api/action/datastore_search?resource_id=27fb8bcc-23cb-4e85-b5b4-fde68a8ef93a&limit=1&sort=M%C3%A4ttidpunkt%20desc"
+        try:
+            response = urllib2.urlopen(url);
+            data = json.loads(response.read())
+        except Exception, e:
+            print "Error"
 
-		postdata = {}
-		try:
-			pm10 = data['result']['records'][0]['PM10']
-			postdata['pm10'] = str(float(pm10))
-		except Exception, e:
-			pm10 = 0
+    	#postdata = {}
+    	try:
+    		pm10 = data['result']['records'][0]['PM10']
+    		#postdata['pm10'] = str(float(pm10))
+    	except Exception, e:
+    		pm10 = 0
 
-		try:
-			no2 = data['result']['records'][0]['NO2']
-			postdata['no2'] = str(((no2/1000.0000)*24.4500)/46.0100) #Convert mg/m3 to ppm
-		except Exception, e:
-			no2 = 0
+        pm10str = str(float(pm10))
 
-		postdata['sourceId'] = 'UMEA1'
-		postdata['position'] = '63.827743,20.256825'
+    	try:
+    		no2 = data['result']['records'][0]['NO2']
+    		#postdata['no2'] = str(((no2/1000.0000)*24.4500)/46.0100) #Convert mg/m3 to ppm
+    	except Exception, e:
+    		no2 = 0
 
-		req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
-		req.add_header('Content-Type', 'application/json')
-		response = urllib2.urlopen(req, json.dumps(postdata))
-		self.response.write(postdata)
+        no2str = str(((no2/1000.0000)*24.4500)/46.0100)
+
+        payload = {
+            'sourceId': 'UMEA1',
+            'position': '63.827743,20.256825',
+            'pm10': pm10str,
+            'no2': no2str
+        }
+
+        #postdata['sourceId'] = 'UMEA1'
+        #postdata['position'] = '63.827743,20.256825'
+        taskqueue.add(url='/worker', params=payload)
+        #taskqueue.add(url="/worker",params={postdata})
+
+    	#req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
+    	#req.add_header('Content-Type', 'application/json')
+    	#response = urllib2.urlopen(req, json.dumps(postdata))
+    	self.response.write(payload)
 
 class Sthlm(webapp2.RequestHandler):
 	def get(self):
@@ -380,22 +423,26 @@ def aqi(values):
     pm10=values["pm10"]
     no2=values["no2"]
 
+    #print "%%%% AQI %%%%"
+    #print values
+    #print "ISDIG"
+    #print pm10
+
     f = 0
     coIndex = 0
     pm10Index = 0
     no2Index = 0
 
-
-    if ast.literal_eval(co) is not None:
+    if co.replace('.','',1).isdigit():
         coIndex = index(tableCo, float(co), 10)
         f = f+1
 
-    if ast.literal_eval(pm10) is not None:
+    if pm10.replace('.','',1).isdigit():
     	pm10Index = index(tablePm10, float(pm10), 1)
     	f = f+1
 
     # TODO: Check the factor
-    if ast.literal_eval(no2) is not None:
+    if no2.replace('.','',1).isdigit():
     	no2Index = index(tableNo2, float(no2), 1)
     	f = f+1
 
@@ -509,26 +556,31 @@ class RegisterRecord(webapp2.RequestHandler):
         # print "#1. Worker is registering "
         # Only needs timestamp, pm10, co, no2, position and sourceId as input.
         # The rest should be calculated here.
+
         pm10=self.request.get('pm10')
         co=self.request.get('co')
         no2=self.request.get('no2')
+
+        #print "PM10: " + pm10
+        #print "CO: " + co
+        #print "NO2: " + no2
 
         aqiValue=aqi({"co":co,"pm10":pm10,"no2":no2})
 
         if aqiValue is None:
             print "No AQI"
         else:
-            if ast.literal_eval(co) is None:
+            if not co.replace('.','',1).isdigit():
                 co = None
             else:
                 co = float(co)
 
-            if ast.literal_eval(pm10) is None:
+            if not pm10.replace('.','',1).isdigit():
                 pm10 = None
             else:
                 pm10 = float(pm10)
 
-            if ast.literal_eval(no2) is None:
+            if not no2.replace('.','',1).isdigit() is None:
                 no2 = None
             else:
                 no2 = float(no2)
@@ -542,9 +594,15 @@ class RegisterRecord(webapp2.RequestHandler):
             country = locationContext.get('country')
             position = locationContext.get('position')
 
+            #print calendar.timegm(time.gmtime())
+            #print self.request.get('timestamp')
+
+            timestamp = self.request.get('timestamp')
+            if not timestamp:
+                timestamp = calendar.timegm(time.gmtime())
 
             rec=Records(
-                timestamp=datetime.datetime.fromtimestamp(float(self.request.get('timestamp'))),
+                timestamp=datetime.datetime.fromtimestamp(float(timestamp)),
                 pm10=pm10,
                 co=co,
                 no2=no2,
