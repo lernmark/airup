@@ -96,58 +96,69 @@ class UrlTester(webapp2.RequestHandler):
             'password':'AirUp123'
         }
         headers = {
-            'Authorization':'Basic %s' % base64string,
             'Accept':'application/json;charset=UTF-8',
             'Content-Type':'application/json'
         }
         # curl -X POST --header "Content-Type: application/json" --header "Accept: application/json;charset=UTF-8" -d "{\"password\":\"AirUp123\"}" "http://api.foobot.io/v2/user/lars%40wattsgard.se/login/"
-        urlLogin = 'http://api.foobot.io/v2/user/lars%40wattsgard.se/login/'
+        urlLogin = 'http://api.foobot.io/v2/user/lars@wattsgard.se/login/'
 
         print base64string
 
-        data = urllib.urlencode(pl)
-        opener = urllib2.build_opener(urllib2.HTTPHandler(debuglevel=1))
-        content = opener.open(urlLogin, data=data).read()
-        content.add_header("Content-Type", "application/json")
-        content.add_header("Accept", "application/json;charset=UTF-8")
-        content.add_header("Authorization", "Basic %s" % base64string)
-        self.response.write(content)
+        #data = urllib.urlencode(pl)
+        #opener = urllib2.build_opener(urllib2.HTTPHandler(debuglevel=1))
+        #content = opener.open(urlLogin, data=data).read()
+        #content.add_header("Content-Type", "application/json")
+        #content.add_header("Accept", "application/json;charset=UTF-8")
+        #content.add_header("Authorization", "Basic %s" % base64string)
+        
+
 
         #
         #response = urlfetch.fetch(url=urlLogin, method = urlfetch.POST, payload=pl, headers = {"Authorization": "Basic %s" % base64string, "Accept": "application/json;charset=UTF-8", "Content-Type":"application/json"})
-        #response = urlfetch.fetch(method=urlfetch.POST, url=urlLogin, payload=urllib.urlencode(pl), headers=headers)
+        response = urlfetch.fetch(method=urlfetch.POST, url=urlLogin, payload="{\"password\":\"AirUp123\"}", headers=headers)
 
         #request = urllib2.Request(urlLogin, data)
         #request.get_method = lambda: "POST"
         #request.add_header("Authorization", "Basic %s" % base64string)
         #request.add_header("Accept", "application/json;charset=UTF-8")
         #request.add_header("Content-Type", "application/json")
+        #self.response.write("hehe")
 
         #response = urllib2.urlopen(request)
         #token = response.info().getheader('X-AUTH-TOKEN')
         #self.response.write(token)
 
-        #if response.status_code == 200:
-        #    token = response.headers['X-AUTH-TOKEN']
-        #    self.response.write(token)
-        #else:
-        #    self.response.write(response.content)
+        if response.status_code == 200:
+            token = response.headers['X-AUTH-TOKEN']
+            self.response.write(token)
+        else:
+            self.response.write(response.content)
 
 
 class Foobot(webapp2.RequestHandler):
     def get(self):
         isotoday = datetime.datetime.now().date().isoformat()
-        urlLogin = 'http://api.foobot.io/v2/user/lars%40wattsgard.se/login'
-        urlDevice = 'http://api.foobot.io/v2/owner/lars%40wattsgard.se/device'
-        urlData = 'http://api.foobot.io/v2/device/%s/datapoint/2015-12-22T011:00/2015-12-22T12:00:00/0'
+        urlLogin = 'https://api.foobot.io/v2/user/lars@wattsgard.se/login/'
+        urlDevice = 'https://api.foobot.io/v2/owner/lars@wattsgard.se/device/'
+        urlData = 'https://api.foobot.io/v2/device/%s/datapoint/2015-12-22T011:00/2015-12-22T12:00:00/0/'
         urlfetch.set_default_fetch_deadline(60)
         # First. Login and get the token
-        base64string = base64.encodestring('%s:%s' % ("lars@wattsgard.se", "AirUp123")).replace('\n', '')
-        response = urlfetch.fetch(url=urlLogin, method = urlfetch.GET, headers = {"Authorization": "Basic %s" % base64string})
+        #base64string = base64.encodestring('%s:%s' % ("lars@wattsgard.se", "AirUp123")).replace('\n', '')
+        #response = urlfetch.fetch(url=urlLogin, method = urlfetch.GET, headers = {"Authorization": "Basic %s" % base64string})
+        headers = {
+            'Accept':'application/json;charset=UTF-8',
+            'Content-Type':'application/json'
+        }        
+        response = urlfetch.fetch(method=urlfetch.POST, url=urlLogin, payload="{\"password\":\"AirUp123\"}", headers=headers)
         if response.status_code == 200:
+            
             token = response.headers['X-AUTH-TOKEN']
+            print "###TOKEN"
+            print token
+            #self.response.write(token)
             # 2 use the token to get all devices
             response = urlfetch.fetch(url=urlDevice, method = urlfetch.GET, headers = {"X-AUTH-TOKEN": token})
+            print response.content
             devices = json.loads(response.content)
             for dev in devices:
                 postdata = {}
