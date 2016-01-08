@@ -113,6 +113,7 @@ class UrlTester(webapp2.RequestHandler):
         content.add_header("Authorization", "Basic %s" % base64string)
         self.response.write(content)
 
+        #
         #response = urlfetch.fetch(url=urlLogin, method = urlfetch.POST, payload=pl, headers = {"Authorization": "Basic %s" % base64string, "Accept": "application/json;charset=UTF-8", "Content-Type":"application/json"})
         #response = urlfetch.fetch(method=urlfetch.POST, url=urlLogin, payload=urllib.urlencode(pl), headers=headers)
 
