@@ -91,6 +91,9 @@ class Records(db.Model):
 class UrlTester(webapp2.RequestHandler):
     def get(self):
         urlfetch.set_default_fetch_deadline(60)
+        responseIp = urlfetch.fetch(url='https://api.ipify.org')
+        self.response.write(responseIp.content)
+
         base64string = base64.encodestring('%s:%s' % ("lars%40wattsgard.se", "AirUp123")).replace('\n', '')
         pl = {
             'userName': 'lars%40wattsgard.se',
@@ -99,7 +102,6 @@ class UrlTester(webapp2.RequestHandler):
         headers = {'Accept':'application/json;charset=UTF-8','Content-Type':'application/json'}
         # curl -X POST --header "Content-Type: application/json" --header "Accept: application/json;charset=UTF-8" -d "{\"password\":\"AirUp123\"}" "http://api.foobot.io/v2/user/lars%40wattsgard.se/login/"
         urlLogin = 'http://api-eu-west-1.foobot.io/v2/user/lars%40wattsgard.se/login/'
-
         response = urlfetch.fetch(
             method=urlfetch.POST,
             url='http://api.foobot.io/v2/user/lars@wattsgard.se/login/',
@@ -144,12 +146,12 @@ class Foobot(webapp2.RequestHandler):
         if response.status_code == 200:
 
             token = response.headers['X-AUTH-TOKEN']
-            print "###TOKEN"
-            print token
+            #print "###TOKEN"
+            #print token
             #self.response.write(token)
             # 2 use the token to get all devices
             response = urlfetch.fetch(url=urlDevice, method = urlfetch.GET, headers = {"X-AUTH-TOKEN": token})
-            print response.content
+            #print response.content
             devices = json.loads(response.content)
             for dev in devices:
                 postdata = {}
@@ -175,7 +177,7 @@ class Foobot(webapp2.RequestHandler):
                         postdata['sourceId'] = dev['name']
                         postdata['position'] = "59.312963,18.080363"
                         postdata['pm10'] = str(pm)
-                        print postdata
+                        #print postdata
                         taskqueue.add(url='/worker', params=postdata)
         else:
             self.response.write(response.content)
@@ -728,7 +730,7 @@ class RegisterRecord(webapp2.RequestHandler):
             if res.count() > 0:
                 zd.index=avrIndex/res.count()
             else:
-                zd.index=float(r[0].index)
+                zd.index=float(res[0].index)
             zd.co=co
             zd.no2=no2
             zd.pm10=pm10

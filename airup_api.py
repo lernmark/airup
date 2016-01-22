@@ -307,7 +307,7 @@ class AirupApi(remote.Service):
         """
         return generateZoneMessage(request.zone)
 
-    RAWDATA_RESOURCE = endpoints.ResourceContainer(message_types.VoidMessage,offset=messages.StringField(1,variant=messages.Variant.STRING),prefix=messages.StringField(1,variant=messages.Variant.STRING))
+    RAWDATA_RESOURCE = endpoints.ResourceContainer(message_types.VoidMessage,offset=messages.StringField(1,variant=messages.Variant.STRING),prefix=messages.StringField(2,variant=messages.Variant.STRING))
     @endpoints.method(RAWDATA_RESOURCE, Records, path='rawdata', http_method='GET', name='data.getRawData')
     def rawdata_get(self, request):
         """
