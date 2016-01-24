@@ -58,6 +58,8 @@ import json
 from xml.dom import minidom
 from google.appengine.ext import db
 import hashlib
+import yaml
+#import requests
 
 GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s"
 #SERVICE_URL = "http://localhost:8888"
@@ -90,11 +92,11 @@ class Records(db.Model):
 
 class UrlTester(webapp2.RequestHandler):
     def get(self):
-        urlfetch.set_default_fetch_deadline(60)
-        responseIp = urlfetch.fetch(url='https://api.ipify.org')
-        self.response.write(responseIp.content)
+        # urlfetch.set_default_fetch_deadline(60)
+        # responseIp = urlfetch.fetch(url='https://api.ipify.org')
+        # self.response.write(responseIp.content)
+        # base64string = base64.encodestring('%s:%s' % ("lars%40wattsgard.se", "AirUp123")).replace('\n', '')
 
-        base64string = base64.encodestring('%s:%s' % ("lars%40wattsgard.se", "AirUp123")).replace('\n', '')
         pl = {
             'userName': 'lars%40wattsgard.se',
             'password':'AirUp123'
@@ -102,12 +104,12 @@ class UrlTester(webapp2.RequestHandler):
         headers = {'Accept':'application/json;charset=UTF-8','Content-Type':'application/json'}
         # curl -X POST --header "Content-Type: application/json" --header "Accept: application/json;charset=UTF-8" -d "{\"password\":\"AirUp123\"}" "http://api.foobot.io/v2/user/lars%40wattsgard.se/login/"
         urlLogin = 'http://api-eu-west-1.foobot.io/v2/user/lars%40wattsgard.se/login/'
-        response = urlfetch.fetch(
-            method=urlfetch.POST,
-            url='http://api.foobot.io/v2/user/lars@wattsgard.se/login/',
-            payload="{\"password\":\"AirUp123\"}",
-            headers={'Accept':'application/json;charset=UTF-8','Content-Type':'application/json'}
-            )
+        # response = urlfetch.fetch(
+        #     method=urlfetch.POST,
+        #     url='http://api.foobot.io/v2/user/lars@wattsgard.se/login/',
+        #     payload="{\"password\":\"AirUp123\"}",
+        #     headers={'Accept':'application/json;charset=UTF-8','Content-Type':'application/json'}
+        #     )
 
         #request = urllib2.Request(urlLogin, data)
         #request.get_method = lambda: "POST"
@@ -120,70 +122,94 @@ class UrlTester(webapp2.RequestHandler):
         #token = response.info().getheader('X-AUTH-TOKEN')
         #self.response.write(token)
 
-        if response.status_code == 200:
-            token = response.headers['X-AUTH-TOKEN']
-            self.response.write(token)
-        else:
-            self.response.write(response.content)
+        # if response.status_code == 200:
+        #     token = response.headers['X-AUTH-TOKEN']
+        #     self.response.write(token)
+        # else:
+        #     self.response.write(response.content)
+
+
+        #response = requests.post(urlLogin, data=json.dumps(pl), headers=headers)
+        #print response.text
+        #print response.headers['X-AUTH-TOKEN']
+        payload="{\"password\":\"AirUp123\"}"
+        res2 = urlfetch.fetch(
+            urlLogin,
+            headers=headers,
+            method='POST',
+            payload=payload
+        )
+
+        res2_data = json.loads(res2.content)
+        print res2_data
+        self.response.write(res2.headers['X-AUTH-TOKEN'])
+
+
 
 
 class Foobot(webapp2.RequestHandler):
     def get(self):
         isotoday = datetime.datetime.now().date().isoformat()
-        urlLogin = 'https://api.foobot.io/v2/user/lars@wattsgard.se/login/'
+        #urlLogin = 'https://api.foobot.io/v2/user/lars@wattsgard.se/login/'
+        urlLogin = 'http://api-eu-west-1.foobot.io/v2/user/lars%40wattsgard.se/login/'
+
         urlDevice = 'https://api.foobot.io/v2/owner/lars@wattsgard.se/device/'
         urlData = 'https://api.foobot.io/v2/device/%s/datapoint/2015-12-22T011:00/2015-12-22T12:00:00/0/'
         urlfetch.set_default_fetch_deadline(60)
         # First. Login and get the token
         base64string = base64.encodestring('%s:%s' % ("lars@wattsgard.se", "AirUp123")).replace('\n', '')
-        #response = urlfetch.fetch(url=urlLogin, method = urlfetch.GET, headers = {"Authorization": "Basic %s" % base64string})
-        headers = {
-            'Authorization': 'Basic %s' % base64string,
-            'Accept':'application/json;charset=UTF-8',
-            'Content-Type':'application/json'
-        }
-        response = urlfetch.fetch(method=urlfetch.POST, url=urlLogin, payload="{\"userName\":\"lars@wattsgard.se\",\"password\":\"AirUp123\"}", headers=headers)
-        if response.status_code == 200:
+        headers = {'Accept':'application/json;charset=UTF-8','Content-Type':'application/json'}
 
-            token = response.headers['X-AUTH-TOKEN']
-            #print "###TOKEN"
-            #print token
-            #self.response.write(token)
+        payload="{\"password\":\"AirUp123\"}"
+        resLogin = urlfetch.fetch(
+            urlLogin,
+            headers=headers,
+            method='POST',
+            payload=payload
+        )
+
+        if resLogin.status_code == 200:
+
+            token = resLogin.headers['X-AUTH-TOKEN']
+            print token
             # 2 use the token to get all devices
-            response = urlfetch.fetch(url=urlDevice, method = urlfetch.GET, headers = {"X-AUTH-TOKEN": token})
-            #print response.content
-            devices = json.loads(response.content)
+            headers = {'Accept':'application/json;charset=UTF-8','Content-Type':'application/json','X-AUTH-TOKEN': token}
+            responseDev = urlfetch.fetch(
+                urlDevice,
+                method='GET',
+                headers = headers
+            )
+            devices = json.loads(responseDev.content)
+            print devices
             for dev in devices:
                 postdata = {}
                 # 3. using each device uuid get all data (within the dates)
-                response = urlfetch.fetch(url=urlData % dev['uuid'], method = urlfetch.GET, headers = {"X-AUTH-TOKEN": token})
-                fooData = response.content
-                headers = ("s",
-                    "ugm3",
-                    "C",
-                    "pc",
-                    "ppm",
-                    "ppb",
-                    "%")
-                j = json.loads(fooData)
-                dp = j['datapoints']
-
-                if dp:
-                    latest = dp[0]
-                    if latest:
-                        postdata = {}
-                        time = latest[0]
-                        pm = latest[1]
-                        postdata['sourceId'] = dev['name']
-                        postdata['position'] = "59.312963,18.080363"
-                        postdata['pm10'] = str(pm)
-                        #print postdata
-                        taskqueue.add(url='/worker', params=postdata)
+                print dev
+                #print dev['uuid']
+                # responseData = urlfetch.fetch(url=urlData % dev['uuid'], method = urlfetch.GET, headers = {"X-AUTH-TOKEN": token})
+                # fooData = responseData.content
+                # headers = ("s",
+                #     "ugm3",
+                #     "C",
+                #     "pc",
+                #     "ppm",
+                #     "ppb",
+                #     "%")
+                # j = json.loads(fooData)
+                # dp = j['datapoints']
+                #
+                # if dp:
+                #     latest = dp[0]
+                #     if latest:
+                #         postdata = {}
+                #         time = latest[0]
+                #         pm = latest[1]
+                #         postdata['sourceId'] = dev['name']
+                #         postdata['position'] = "59.312963,18.080363"
+                #         postdata['pm10'] = str(pm)
+                #         taskqueue.add(url='/worker', params=postdata)
         else:
-            self.response.write(response.content)
-
-        #self.response.write("<strong>DONE</strong>")
-
+            self.response.write(resLogin.content)
 
 
 class Eaa(webapp2.RequestHandler):
