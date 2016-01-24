@@ -62,11 +62,15 @@ import yaml
 #import requests
 
 GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s"
-#SERVICE_URL = "http://localhost:8888"
-SERVICE_URL = "https://bamboo-zone-547.appspot.com"
 # http://apis-explorer.appspot.com/apis-explorer/?base=http://localhost:8080/_ah/api#p/
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
+FOOBOT_LOCATIONS = {
+    "flintbacken10": "59.310014,18.050748",
+    "Bondegatan21-Ugnen": "59.312963,18.080363",
+    "HappyWattBot05Bergsunds Strand": "59.316569,18.026894",
+    "Peringskioldsvagen58": "59.35111,17.90213",
+}
 
 
 class AirReport(): pass
@@ -90,71 +94,39 @@ class Records(db.Model):
     zoneKey = db.StringProperty()
 
 
-class UrlTester(webapp2.RequestHandler):
+class Linkoping(webapp2.RequestHandler):
     def get(self):
-        # urlfetch.set_default_fetch_deadline(60)
-        # responseIp = urlfetch.fetch(url='https://api.ipify.org')
-        # self.response.write(responseIp.content)
-        # base64string = base64.encodestring('%s:%s' % ("lars%40wattsgard.se", "AirUp123")).replace('\n', '')
-
-        pl = {
-            'userName': 'lars%40wattsgard.se',
-            'password':'AirUp123'
-        }
+        isotoday = datetime.datetime.now().date().isoformat()
+        url = "http://nods.se/rest/air/municipalities/0580?from=" + isotoday + "&minified=true"
         headers = {'Accept':'application/json;charset=UTF-8','Content-Type':'application/json'}
-        # curl -X POST --header "Content-Type: application/json" --header "Accept: application/json;charset=UTF-8" -d "{\"password\":\"AirUp123\"}" "http://api.foobot.io/v2/user/lars%40wattsgard.se/login/"
-        urlLogin = 'http://api-eu-west-1.foobot.io/v2/user/lars%40wattsgard.se/login/'
-        # response = urlfetch.fetch(
-        #     method=urlfetch.POST,
-        #     url='http://api.foobot.io/v2/user/lars@wattsgard.se/login/',
-        #     payload="{\"password\":\"AirUp123\"}",
-        #     headers={'Accept':'application/json;charset=UTF-8','Content-Type':'application/json'}
-        #     )
-
-        #request = urllib2.Request(urlLogin, data)
-        #request.get_method = lambda: "POST"
-        #request.add_header("Authorization", "Basic %s" % base64string)
-        #request.add_header("Accept", "application/json;charset=UTF-8")
-        #request.add_header("Content-Type", "application/json")
-        #self.response.write("hehe")
-
-        #response = urllib2.urlopen(request)
-        #token = response.info().getheader('X-AUTH-TOKEN')
-        #self.response.write(token)
-
-        # if response.status_code == 200:
-        #     token = response.headers['X-AUTH-TOKEN']
-        #     self.response.write(token)
-        # else:
-        #     self.response.write(response.content)
-
-
-        #response = requests.post(urlLogin, data=json.dumps(pl), headers=headers)
-        #print response.text
-        #print response.headers['X-AUTH-TOKEN']
-        payload="{\"password\":\"AirUp123\"}"
-        res2 = urlfetch.fetch(
-            urlLogin,
+        result = urlfetch.fetch(
+            url,
             headers=headers,
-            method='POST',
-            payload=payload
+            method='GET'
         )
 
-        res2_data = json.loads(res2.content)
-        print res2_data
-        self.response.write(res2.headers['X-AUTH-TOKEN'])
-
+        data = json.loads(result.content)
+        dataLatest = data['airMeasurements'][0]
+        postdata = {}
+        time = dataLatest["time"]
+        pm = dataLatest["value"]
+        postdata['sourceId'] = "Linkoping-hamngatan-nods"
+        postdata['position'] = "58.408413,15.631572"
+        postdata['pm10'] = str(pm)
+        taskqueue.add(url='/worker', params=postdata)
+        self.response.write(postdata)
 
 
 
 class Foobot(webapp2.RequestHandler):
     def get(self):
         isotoday = datetime.datetime.now().date().isoformat()
+        print isotoday
         #urlLogin = 'https://api.foobot.io/v2/user/lars@wattsgard.se/login/'
         urlLogin = 'http://api-eu-west-1.foobot.io/v2/user/lars%40wattsgard.se/login/'
 
-        urlDevice = 'https://api.foobot.io/v2/owner/lars@wattsgard.se/device/'
-        urlData = 'https://api.foobot.io/v2/device/%s/datapoint/2015-12-22T011:00/2015-12-22T12:00:00/0/'
+        urlDevice = 'https://api-eu-west-1.foobot.io/v2/owner/lars%40wattsgard.se/device/'
+        urlData = 'https://api-eu-west-1.foobot.io/v2/device/%s/datapoint/'+ isotoday + 'T00:00/' + isotoday + 'T23:59:00/0/'
         urlfetch.set_default_fetch_deadline(60)
         # First. Login and get the token
         base64string = base64.encodestring('%s:%s' % ("lars@wattsgard.se", "AirUp123")).replace('\n', '')
@@ -169,9 +141,7 @@ class Foobot(webapp2.RequestHandler):
         )
 
         if resLogin.status_code == 200:
-
             token = resLogin.headers['X-AUTH-TOKEN']
-            print token
             # 2 use the token to get all devices
             headers = {'Accept':'application/json;charset=UTF-8','Content-Type':'application/json','X-AUTH-TOKEN': token}
             responseDev = urlfetch.fetch(
@@ -180,34 +150,36 @@ class Foobot(webapp2.RequestHandler):
                 headers = headers
             )
             devices = json.loads(responseDev.content)
-            print devices
             for dev in devices:
                 postdata = {}
                 # 3. using each device uuid get all data (within the dates)
-                print dev
+                #self.response.write(dev)
                 #print dev['uuid']
-                # responseData = urlfetch.fetch(url=urlData % dev['uuid'], method = urlfetch.GET, headers = {"X-AUTH-TOKEN": token})
-                # fooData = responseData.content
-                # headers = ("s",
-                #     "ugm3",
-                #     "C",
-                #     "pc",
-                #     "ppm",
-                #     "ppb",
-                #     "%")
-                # j = json.loads(fooData)
-                # dp = j['datapoints']
-                #
-                # if dp:
-                #     latest = dp[0]
-                #     if latest:
-                #         postdata = {}
-                #         time = latest[0]
-                #         pm = latest[1]
-                #         postdata['sourceId'] = dev['name']
-                #         postdata['position'] = "59.312963,18.080363"
-                #         postdata['pm10'] = str(pm)
-                #         taskqueue.add(url='/worker', params=postdata)
+                responseData = urlfetch.fetch(url=urlData % dev['uuid'], method = urlfetch.GET, headers = {"X-AUTH-TOKEN": token})
+                fooData = responseData.content
+                #self.response.write(fooData)
+                headers = ("s",
+                    "ugm3",
+                    "C",
+                    "pc",
+                    "ppm",
+                    "ppb",
+                    "%")
+                j = json.loads(fooData)
+                dp = j['datapoints']
+
+                if dp:
+                    latest = dp[0]
+                    if latest:
+                        postdata = {}
+                        time = latest[0]
+                        pm = latest[1]
+                        sourceId = dev['name'].strip()
+                        postdata['sourceId'] = sourceId
+                        postdata['position'] = FOOBOT_LOCATIONS[sourceId]
+                        postdata['pm10'] = str(pm)
+                        taskqueue.add(url='/worker', params=postdata)
+                        self.response.write(postdata)
         else:
             self.response.write(resLogin.content)
 
@@ -247,9 +219,6 @@ class Eaa(webapp2.RequestHandler):
                 postdata['co'] = "0.3"
                 postdata['no2'] = "0.4"
                 self.response.write(postdata)
-                #req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
-                #req.add_header('Content-Type', 'application/json')
-                #response = urllib2.urlopen(req, json.dumps(postdata))
                 taskqueue.add(url='/worker', params=postdata)
 
 
@@ -292,30 +261,18 @@ class Hamburg1(webapp2.RequestHandler):
             postdata.sourceId = sourceId
             postdata.position = position
 
-            #req = urllib2.Request('https://bamboo-zone-547.appspot.com/_ah/api/airup/v1/queueIt')
-            #req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
-            #req.add_header('Content-Type', 'application/json')
-            #response = urllib2.urlopen(req, json.dumps(postdata))
-
             self.response.write("<br/><code>DONE " + sourceId + "<code><br/>")
             taskqueue.add(url='/worker', params=postdata)
 
-
         """
         Data from http://luft.hamburg.de/
-        24FL - 53.638128,9.996872
-        70MB - 53.555555,9.943407
-        17SM - 53.560899,9.957213
-        68HB - 53.592354,10.053774
-        61WB - 53.508315,9.990633
         """
-                #http://hamburg.luftmessnetz.de/station/24FL.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday&searchfrom=02.01.2016+00%3A00&searchuntil=03.01.2016+00%3A00
         regData("http://hamburg.luftmessnetz.de/station/70MB.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-70MB", "53.555555,9.943407")
         regData("http://hamburg.luftmessnetz.de/station/17SM.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-17SM", "53.560899,9.957213")
         regData("http://hamburg.luftmessnetz.de/station/68HB.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-68HB", "53.592354,10.053774")
         regData("http://hamburg.luftmessnetz.de/station/24FL.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-24FL", "53.638128,9.996872")
         regData("http://hamburg.luftmessnetz.de/station/61WB.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-61WB", "53.508315,9.990633")
-
+        regData("http://hamburg.luftmessnetz.de/station/13ST.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-13ST", "53.562087,9.964416")
 
 class Goteborg(webapp2.RequestHandler):
 
@@ -355,9 +312,6 @@ class Goteborg(webapp2.RequestHandler):
 
         taskqueue.add(url='/worker', params=postdata)
 
-        #req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
-        #req.add_header('Content-Type', 'application/json')
-        #response = urllib2.urlopen(req, json.dumps(postdata))
         self.response.write(postdata)
 
 
@@ -402,9 +356,6 @@ class SubmitToQueue(webapp2.RequestHandler):
 
         self.response.write(postdata)
 
-        #req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
-        #req.add_header('Content-Type', 'application/json')
-        #response = urllib2.urlopen(req, json.dumps(postdata))
         taskqueue.add(url='/worker', params=postdata)
 
 
@@ -444,14 +395,7 @@ class Umea(webapp2.RequestHandler):
             'no2': no2str
         }
 
-        #postdata['sourceId'] = 'UMEA1'
-        #postdata['position'] = '63.827743,20.256825'
         taskqueue.add(url='/worker', params=payload)
-        #taskqueue.add(url="/worker",params={postdata})
-
-    	#req = urllib2.Request(SERVICE_URL + '/_ah/api/airup/v1/queueIt')
-    	#req.add_header('Content-Type', 'application/json')
-    	#response = urllib2.urlopen(req, json.dumps(postdata))
     	self.response.write(payload)
 
 class Sthlm(webapp2.RequestHandler):
@@ -796,7 +740,7 @@ class Index(webapp2.RequestHandler):
 
 app = webapp2.WSGIApplication([
         ('/worker', RegisterRecord),
-        ('/tester', UrlTester),
+        ('/linkoping', Linkoping),
         ('/gbg1', Goteborg),
         ('/umea1', Umea),
         ('/hamburg1', Hamburg1),
