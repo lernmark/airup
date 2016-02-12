@@ -39,6 +39,8 @@ class Record(messages.Message):
     position = messages.StringField(6)
     positionLabels = messages.StringField(7)
     sourceId = messages.StringField(8, required=True)
+    pm25 = messages.FloatField(9)
+    o3 = messages.FloatField(9)
 
 class Records(messages.Message):
     records = messages.MessageField(Record, 1, repeated=True)
@@ -88,6 +90,8 @@ class ZoneDetailData(messages.Message):
     pm10 = messages.FloatField(2)
     no2 = messages.FloatField(3)
     index = messages.FloatField(4)
+    pm25 = messages.FloatField(5)
+    o3 = messages.FloatField(6)
 
 class ZoneDetail(messages.Message):
     title = messages.StringField(1)
@@ -134,6 +138,8 @@ def getRawData(offset,prefix):
                     pm10 = d.pm10,
                     co = d.co,
                     no2 = d.no2,
+                    pm25 = d.pm25,
+                    c3 = d.c3,
                     index = d.index,
                     position = str(d.position),
                     positionLabels = d.positionLabels,
@@ -169,6 +175,15 @@ def generateZoneMessage(zone):
     for x in range(0, numberOfCategories):
         no2Breakpoints.append(IndexCategory(upTo=(worker.tableNo2[x][-1]+1)/1000.0,label=str(worker.indexLables[x])))
 
+    pm25Breakpoints = []
+    for x in range(0, numberOfCategories):
+        pm25Breakpoints.append(IndexCategory(upTo=float(worker.tablePm25[x][-1]+1),label=str(worker.indexLables[x])))
+
+    o3Breakpoints = []
+    for x in range(0, numberOfCategories):
+        o3Breakpoints.append(IndexCategory(upTo=float(worker.tableO3[x][-1]+1),label=str(worker.indexLables[x])))
+
+
     try:
 
         factArr = []
@@ -192,7 +207,7 @@ def generateZoneMessage(zone):
                 ZoneDetail(
                     title=j['title'],
                     subtitle=j.get('subtitle', None),
-                    data=ZoneDetailData(co=j.get('co', None), no2=j.get('no2', None),pm10=j.get('pm10', None),index=j.get('index', None)),
+                    data=ZoneDetailData(co=j.get('co', None), no2=j.get('no2', None),pm10=j.get('pm10', None),pm25=j.get('pm25', None),o3=j.get('o3', None),index=j.get('index', None)),
                     zoneKey=j.get('zoneKey', None),
                     min24Hr=j.get('min24hr', None),
                     max24Hr=j.get('max24hr', None),
@@ -209,6 +224,8 @@ def generateZoneMessage(zone):
                 Breakpoints(breakpointType="index",category=ic, unit="AQI", minValue=0.0, maxValue=(worker.tableAqiIndex[numberOfCategories-1][-1]+1)/1.0),
                 Breakpoints(breakpointType="co",category=coBreakpoints, unit="ppm", minValue=0.0, maxValue=(worker.tableCo[numberOfCategories-1][-1]+1)/10.0),
                 Breakpoints(breakpointType="pm10",category=pm10Breakpoints, unit="µg/m³".decode('utf-8'), minValue=0.0, maxValue=float(worker.tablePm10[numberOfCategories-1][-1]+1)),
+                Breakpoints(breakpointType="pm25",category=pm25Breakpoints, unit="µg/m³".decode('utf-8'), minValue=0.0, maxValue=float(worker.tablePm25[numberOfCategories-1][-1]+1)),
+                Breakpoints(breakpointType="o3",category=o3Breakpoints, unit="µg/m³".decode('utf-8'), minValue=0.0, maxValue=float(worker.tableO3[numberOfCategories-1][-1]+1)),
                 Breakpoints(breakpointType="no2",category=no2Breakpoints, unit="ppm", minValue=0.0, maxValue=(worker.tableNo2[numberOfCategories-1][-1]+1)/1000.0)
             ],
             timestamp=float(time.time()),
@@ -261,10 +278,14 @@ class AirupApi(remote.Service):
         recPayload["pm10"] = None
         recPayload["co"] = None
         recPayload["no2"] = None
+        recPayload["pm25"] = None
+        recPayload["o3"] = None
         recPayload["sourceId"] = None
 
         recPayload["co"] = request.co
         recPayload["pm10"] = request.pm10
+        recPayload["pm25"] = request.pm25
+        recPayload["o3"] = request.o3
         recPayload["no2"] = request.no2
         recPayload["sourceId"] = request.sourceId
         taskqueue.add(queue_name='recordQueue', url='/worker', params=recPayload)

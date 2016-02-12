@@ -85,6 +85,8 @@ class Records(db.Model):
     """Models an individual Record entry with content and date."""
     timestamp = db.DateTimeProperty()
     pm10 = db.FloatProperty()
+    pm25 = db.FloatProperty()
+    o3 = db.FloatProperty()
     co = db.FloatProperty()
     no2 = db.FloatProperty()
     index = db.FloatProperty()
@@ -177,7 +179,7 @@ class Foobot(webapp2.RequestHandler):
                         sourceId = dev['name'].strip()
                         postdata['sourceId'] = sourceId
                         postdata['position'] = FOOBOT_LOCATIONS[sourceId]
-                        postdata['pm10'] = str(pm)
+                        postdata['pm25'] = str(pm)
                         taskqueue.add(url='/worker', params=postdata)
                         self.response.write(postdata)
         else:
@@ -240,6 +242,8 @@ class Hamburg1(webapp2.RequestHandler):
                 'sourceId': '',
                 'position': '',
                 'pm10': '',
+                'pm25': '',
+                'o3': '',
                 'co': '',
                 'no2': ''
             }
@@ -285,6 +289,8 @@ class Goteborg(webapp2.RequestHandler):
             'sourceId': 'GBG1',
             'position': '57.708870,11.974560',
             'pm10': '',
+            'pm25': '',
+            'o3': '',
             'co': '',
             'no2': ''
         }
@@ -327,6 +333,18 @@ class SubmitToQueue(webapp2.RequestHandler):
             postdata['pm10'] = str(pm10)
         except Exception, e:
             print "no pm10"
+
+        try:
+            pm25=self.request.get('pm25')
+            postdata['pm25'] = str(pm25)
+        except Exception, e:
+            print "no pm25"
+
+        try:
+            o3=self.request.get('o3')
+            postdata['o3'] = str(o3)
+        except Exception, e:
+            print "No o3"
 
         try:
             no2=self.request.get('no2')
@@ -392,6 +410,8 @@ class Umea(webapp2.RequestHandler):
             'sourceId': 'UMEA1',
             'position': '63.827743,20.256825',
             'pm10': pm10str,
+            'pm25': '',
+            'o3': '',
             'no2': no2str
         }
 
@@ -413,7 +433,9 @@ class Sthlm(webapp2.RequestHandler):
 tableAqiIndex = [ range(0, 50, 1),range(51, 100, 1),range(101, 150, 1),range(151, 200, 1),range(201, 300, 1),range(301, 400, 1),range(401, 500, 1) ]
 tableCo = [ range(0, 44, 1),range(45, 94, 1),range(95, 124, 1),range(125, 154, 1),range(155, 304, 1),range(305, 404, 1),range(405, 504, 1) ]
 tableNo2 = [ range(0, 53, 1),range(54, 100, 1),range(101, 360, 1),range(361, 640, 1),range(650, 1240, 1),range(1250, 1640, 1),range(1650, 2040, 1) ]
+tableO3 = [ range(0, 53, 1),range(54, 100, 1),range(101, 360, 1),range(361, 640, 1),range(650, 1240, 1),range(1250, 1640, 1),range(1650, 2040, 1) ]
 tablePm10 = [ range(0, 54, 1),range(55, 154, 1),range(155, 254, 1),range(255, 354, 1),range(355, 424, 1),range(425, 504, 1),range(505, 604, 1) ]
+tablePm25 = [ range(0, 54, 1),range(55, 154, 1),range(155, 254, 1),range(255, 354, 1),range(355, 424, 1),range(425, 504, 1),range(505, 604, 1) ]
 indexLables = ["Good","Moderate","Unhealthy for Sensitive Group","Unhealthy","Very Unhealthy","Hazardous","Hazardous"]
 
 
@@ -438,6 +460,8 @@ def aqi(values):
 
     co=values["co"]
     pm10=values["pm10"]
+    pm25=values["pm25"]
+    o3=values["o3"]
     no2=values["no2"]
 
     #print "%%%% AQI %%%%"
@@ -448,6 +472,8 @@ def aqi(values):
     f = 0
     coIndex = 0
     pm10Index = 0
+    pm25Index = 0
+    o3Index = 0
     no2Index = 0
 
     if co.replace('.','',1).isdigit():
@@ -458,13 +484,21 @@ def aqi(values):
     	pm10Index = index(tablePm10, float(pm10), 1)
     	f = f+1
 
+    if pm25.replace('.','',1).isdigit():
+    	pm25Index = index(tablePm25, float(pm25), 1)
+    	f = f+1
+
+    if o3.replace('.','',1).isdigit():
+    	o3Index = index(tableO3, float(o3), 1)
+    	f = f+1
+
     # TODO: Check the factor
     if no2.replace('.','',1).isdigit():
     	no2Index = index(tableNo2, float(no2), 1)
     	f = f+1
 
     if f > 0:
-        return float((coIndex+pm10Index+no2Index)/f)
+        return float((coIndex + pm10Index + pm25Index + o3Index + no2Index)/f)
 
 
 
@@ -575,6 +609,8 @@ class RegisterRecord(webapp2.RequestHandler):
         # The rest should be calculated here.
 
         pm10=self.request.get('pm10')
+        pm25=self.request.get('pm25')
+        o3=self.request.get('o3')
         co=self.request.get('co')
         no2=self.request.get('no2')
 
@@ -582,7 +618,7 @@ class RegisterRecord(webapp2.RequestHandler):
         #print "CO: " + co
         #print "NO2: " + no2
 
-        aqiValue=aqi({"co":co,"pm10":pm10,"no2":no2})
+        aqiValue=aqi({"co":co,"pm10":pm10,"pm25":pm25,"o3":o3,"no2":no2})
 
         if aqiValue is None:
             print "No AQI"
@@ -596,6 +632,16 @@ class RegisterRecord(webapp2.RequestHandler):
                 pm10 = None
             else:
                 pm10 = float(pm10)
+
+            if not pm25.replace('.','',1).isdigit():
+                pm25 = None
+            else:
+                pm25 = float(pm25)
+
+            if not o3.replace('.','',1).isdigit():
+                o3 = None
+            else:
+                o3 = float(o3)
 
             if not no2.replace('.','',1).isdigit() is None:
                 no2 = None
@@ -621,6 +667,8 @@ class RegisterRecord(webapp2.RequestHandler):
             rec=Records(
                 timestamp=datetime.datetime.fromtimestamp(float(timestamp)),
                 pm10=pm10,
+                pm25=pm25,
+                o3=o3,
                 co=co,
                 no2=no2,
                 zoneKey=zoneKey,
@@ -704,6 +752,8 @@ class RegisterRecord(webapp2.RequestHandler):
             zd.co=co
             zd.no2=no2
             zd.pm10=pm10
+            zd.pm25=pm25
+            zd.o3=o3
             zd.location=location
             zd.position=position
             zd.history=historyArr

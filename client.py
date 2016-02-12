@@ -18,7 +18,9 @@ class Records(db.Model):
     """Models an individual Record entry with content and date."""
     timestamp = db.StringProperty()
     pm10 = db.IntegerProperty()
-    co2 = db.IntegerProperty()
+    pm25 = db.IntegerProperty()
+    O3 = db.IntegerProperty()
+    co = db.IntegerProperty()
     no2 = db.IntegerProperty()
     index = db.IntegerProperty()
     indexLabel = db.StringProperty()

@@ -1,7 +1,10 @@
 tableAqiIndex = [ range(0, 50, 1),range(51, 100, 1),range(101, 150, 1),range(151, 200, 1),range(201, 300, 1),range(301, 400, 1),range(401, 500, 1) ]
-tableCo = [ range(0, 44, 1),range(45, 94, 1),range(95, 124, 1),range(125, 154, 1),range(155, 304, 1),range(305, 404, 1),range(405, 504, 1) ] 
-tableNo2 = [ range(0, 53, 1),range(54, 100, 1),range(101, 360, 1),range(361, 640, 1),range(650, 1240, 1),range(1250, 1640, 1),range(1650, 2040, 1) ] 
-tablePm10 = [ range(0, 54, 1),range(55, 154, 1),range(155, 254, 1),range(255, 354, 1),range(355, 424, 1),range(425, 504, 1),range(505, 604, 1) ] 
+tableCo = [ range(0, 44, 1),range(45, 94, 1),range(95, 124, 1),range(125, 154, 1),range(155, 304, 1),range(305, 404, 1),range(405, 504, 1) ]
+tableNo2 = [ range(0, 53, 1),range(54, 100, 1),range(101, 360, 1),range(361, 640, 1),range(650, 1240, 1),range(1250, 1640, 1),range(1650, 2040, 1) ]
+tablePm10 = [ range(0, 54, 1),range(55, 154, 1),range(155, 254, 1),range(255, 354, 1),range(355, 424, 1),range(425, 504, 1),range(505, 604, 1) ]
+#Verify pm25 and o3
+tablePm25 = [ range(0, 54, 1),range(55, 154, 1),range(155, 254, 1),range(255, 354, 1),range(355, 424, 1),range(425, 504, 1),range(505, 604, 1) ]
+table=3 = [ range(0, 44, 1),range(45, 94, 1),range(95, 124, 1),range(125, 154, 1),range(155, 304, 1),range(305, 404, 1),range(405, 504, 1) ]
 
 def index(table, v, fac):
 	row = [i for i,l in enumerate(table) if int(v*fac) in l][0]
@@ -10,7 +13,7 @@ def index(table, v, fac):
 	iLow = tableAqiIndex[row][0]
 	iHigh = tableAqiIndex[row][len(tableAqiIndex[row])-1]+1
 	index = (
-		(float(iHigh) - float(iLow)) / 
+		(float(iHigh) - float(iLow)) /
 		(float(bpHigh) - float(bpLow))
 		) * (float(v)-(float(bpLow))) + float(iLow)
 	return int(index)
@@ -20,11 +23,15 @@ def aqi(values):
 	print "---------------------------------"
 	co=values["co"]
 	pm10=values["pm10"]
+	pm25=values["pm25"]
+	o3=values["o3"]
 	no2=values["no2"]
 
 	f = 0
 	coIndex = 0
 	pm10Index = 0
+	pm25Index = 0
+	o3Index = 0
 	no2Index = 0
 
 	if co:
@@ -37,13 +44,23 @@ def aqi(values):
 		f = f+1
 		print pm10Index
 
+	if pm25:
+		pm25Index = index(tablePm25, pm25, 1)
+		f = f+1
+		print pm25Index
+
+	if o3:
+		o3Index = index(tableO3, o3, 1)
+		f = f+1
+		print o3Index
+
 	if no2:
 		no2Index = index(tableNo2, no2, 1000)
 		f = f+1
 		print no2Index
 
 	if f > 0:
-		return (coIndex+pm10Index+no2Index)/f
+		return (coIndex + pm10Index + pm25Index + o3Index + no2Index)/f
 
 
 #Examples
@@ -51,7 +68,7 @@ def aqi(values):
 #pm10(micro-g/m3)
 #no2(ppm) 0-2.4
 
-print aqi({"co":50,"pm10":600,"no2":2})
-print aqi({"co":25,"pm10":None,"no2":1.123})
-print aqi({"co":25,"pm10":None,"no2":None})
-print aqi({"co":4.123,"pm10":None,"no2":0.024})
+print aqi({"co":50,"pm10":600,"pm25":600,"O3":4,"no2":2})
+#print aqi({"co":25,"pm10":None,"no2":1.123})
+#print aqi({"co":25,"pm10":None,"no2":None})
+#print aqi({"co":4.123,"pm10":None,"no2":0.024})
