@@ -62,6 +62,8 @@
               </li>
               <li><a href="/index.html?lat=57.70887&lon=11.97456">Gullbergsvass</a>
               </li>
+              <li><a href="/index.html?lat=59.31472280000001&lon=18.02025470000001">Färgfabriken</a>
+              </li>
               <li><a href="/index.html?lat=63.827743&lon=20.256825">Centrala stan (Umeå)</a>
               </li>
             </ul>
@@ -123,8 +125,8 @@
         <a href="" class="btn btn-default pull-right" id="mapUrl" target="_blank" style="display:none"> <span class="glyphicon glyphicon-map-marker" aria-hidden="true"></span> MAP</a>
       </div>
     </div>
-    
-    
+
+
 
     <div class="row">
       <div class="col-sm-12">
@@ -290,7 +292,7 @@
               $("#myhood").html("I live in <code>" + val.address_components[0].long_name + "</code>");
               return;
             }
-            
+
             if ($("#myhood").html() == "") {
               $("#myhood").html("<code>Unknown location</code>");
             }
