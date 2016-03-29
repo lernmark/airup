@@ -96,6 +96,17 @@ class Records(db.Model):
     zoneKey = db.StringProperty()
 
 
+
+class Bot(webapp2.RequestHandler):
+    def get(self):
+        postdata = {}
+        postdata['sourceId'] = "BotFargfabriken"
+        postdata['position'] = "59.31472280000001,18.02025470000001"
+        postdata['pm10'] = '22' # Should be a bit random
+        taskqueue.add(url='/worker', params=postdata)
+        self.response.write(postdata)
+
+
 class Linkoping(webapp2.RequestHandler):
     def get(self):
         isotoday = datetime.datetime.now().date().isoformat()
@@ -790,6 +801,7 @@ class Index(webapp2.RequestHandler):
 
 app = webapp2.WSGIApplication([
         ('/worker', RegisterRecord),
+        ('/bot', Bot),
         ('/linkoping', Linkoping),
         ('/gbg1', Goteborg),
         ('/umea1', Umea),
