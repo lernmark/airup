@@ -698,10 +698,10 @@ class RegisterRecord(webapp2.RequestHandler):
             
             rec.put()
             
-            scopes = ['https://www.googleapis.com/auth/fusiontables']
-            credentials = ServiceAccountCredentials.from_json_keyfile_name('airupBackend-b120f4cbc1a7.json', scopes)
-            fusiontablesadmin = build('fusiontables', 'v2', credentials=credentials)
-            fusiontablesadmin.query().sql(sql="INSERT INTO 1VQ8VQZwKY7zjrTqAxQTtlYdt18bjsbU7Gx4_nyK7 ('Source ID','index','Date','Pos') VALUES ('" + self.request.get('sourceId') + "', " + aqiValue + ", '" + datetime.datetime.fromtimestamp(float(timestamp)) + "', '" + self.request.get('position') + "') ").execute()
+            #scopes = ['https://www.googleapis.com/auth/fusiontables']
+            #credentials = ServiceAccountCredentials.from_json_keyfile_name('airupBackend-b120f4cbc1a7.json', scopes)
+            #fusiontablesadmin = build('fusiontables', 'v2', credentials=credentials)
+            #fusiontablesadmin.query().sql(sql="INSERT INTO 1VQ8VQZwKY7zjrTqAxQTtlYdt18bjsbU7Gx4_nyK7 ('Source ID','index','Date','Pos') VALUES ('" + self.request.get('sourceId') + "', " + aqiValue + ", '" + datetime.datetime.fromtimestamp(float(timestamp)) + "', '" + self.request.get('position') + "') ").execute()
 
             """
             Now, generate the report...
