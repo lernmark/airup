@@ -59,6 +59,10 @@ from xml.dom import minidom
 from google.appengine.ext import db
 import hashlib
 import yaml
+from httplib2 import Http
+from oauth2client.service_account import ServiceAccountCredentials
+from apiclient.discovery import build
+
 #import requests
 
 GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s"
@@ -691,8 +695,13 @@ class RegisterRecord(webapp2.RequestHandler):
                 positionLabels=zoneTitle,
                 sourceId=self.request.get('sourceId'),
             )
-
+            
             rec.put()
+            
+            scopes = ['https://www.googleapis.com/auth/fusiontables']
+            credentials = ServiceAccountCredentials.from_json_keyfile_name('airupBackend-b120f4cbc1a7.json', scopes)
+            fusiontablesadmin = build('fusiontables', 'v2', credentials=credentials)
+            fusiontablesadmin.query().sql(sql="INSERT INTO 1VQ8VQZwKY7zjrTqAxQTtlYdt18bjsbU7Gx4_nyK7 ('Source ID','index','Date','Pos') VALUES ('" + self.request.get('sourceId') + "', " + aqiValue + ", '" + datetime.datetime.fromtimestamp(float(timestamp)) + "', '" + self.request.get('position') + "') ").execute()
 
             """
             Now, generate the report...
