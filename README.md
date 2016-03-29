@@ -1,2 +1,3 @@
 airup API
 =====
+Ping
