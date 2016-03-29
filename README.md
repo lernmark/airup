@@ -1,3 +1,4 @@
 airup API
 =====
 Ping
+Pong
