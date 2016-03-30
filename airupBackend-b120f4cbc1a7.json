@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "bamboo-zone-547",
+  "private_key_id": "b120f4cbc1a792f0c60a11c3c99234f6e463c7dc",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEwAIBADANBgkqhkiG9w0BAQEFAASCBKowggSmAgEAAoIBAQDcUj+iH+IcD3U4\nBKvbhrxTESRRwfVQcLfC5SlPT4DdlLHqMm/N347WeKJ5O5ASZhqGEpxyyRq9bFcl\nJo6LF7zS/1qjNreUvebyMLKKAEiLGZlythtrEqsMrOi4soX1vWBOKyejWxhawksS\nA9cdtBDGxEZqVvdd6VGlfKjCMlX1dfLw12mYTLk7a2C2PcCzhBd5+QOrnJXz+JXD\nIhOtnKWmI9njCjY2SXckLqYVYODCV4pKNE92vrMtOvlgdaf7GedX0pTGNsRXmJhS\nwfLBjsb1Yd4jJOOIZT6t0smgItQtMPAxjOrpif/lH8LmpR9W68+ZGODWokDt7eN5\nPk+jPSYVAgMBAAECggEBAIkX9NihFkV3qOzumzHCqTTXGc517nvbZ70yc34SbpFy\nkTK1p7RnQ65Y6mCdm4yXVDHRKuCSGr17yM4pK9GJN8njczbUOW+oqyhQ/Qe6HWnQ\nyBcFEhKSTzVX8ofbLlg3OtHpMIUJjiILfEL9eMHW5gmI4HgTHWGmaVOcOjZ8s9hE\nIMNCsaL7y+xCbHcLIbGce6oztWctDaLkdLLpvq1iE+1+pFCppkwLhcWRVIJuOEeN\nRB0ja0LXdxVR9V7HL9nTPoEHergymcSQ+tL+EMPVyl2qYoe42obhJosyTIFQVhFG\njXHxMJX7CTlDxFMx41thzN4bfxkADazoOihQd1hlHYECgYEA+LytnaRW6jr20gGN\nLunK9+FLlDjmfHDU4Bsyz7tHWBuJ6j/wWW9G8xr9ElffPplNv/HHBpmWq1PTi+F4\n7zpGvi+xGu/36LDAsZH3BcxzyM7gnW98rdlsmKdGWSTY6JEBnHMI9MKbQPk3BXYQ\nkSk2Ma4tzWdJyc5WZugI4NGySbkCgYEA4sEpSfI39MRzsvsm4oNZq8VHA0EtpRnd\nIIEmHx1+P+i/vawAu8WRLm2KTdWlOQ/36fgoINLk7HlZs1kxT7XVCr8U7B259jLX\nZyrnRtcu11u77zSaQmQYIMNFzkvZmwvFeE1AUtCBUeP30kNEb/Z8CYqK3uA4zzrG\nOQrGzH/0vT0CgYEAxfVzv2iRe60dzplJgbKzxH/bpMV8OkGaShmbYNRNvYN9SZ9F\nbAgx0T0DeFvS4oEj7cVAfrIxxXzbehIiK1KYBrjyHNwq01gIo8nlbQoAhCqRfPrD\noaDO2tcWF9BJiR4OyDKNSC6xXQ56ibAjE0RXS0ayUS0I/sFm5lN47WQ2npECgYEA\nvzUAuxEb7DNIGNG9nV4DXFvzIKRyd/kSRNmCqtQ05HFAVhFXYP8dCFhoOnAAbdiw\nRcPzGpKbZWiCokCA22VJ61DrtJrwd9GxX5aHBW5oWkNJe1ERDxDWY7ImB+pf6WUI\ntAP4TJzzn3krPUtpxzvCpk0EAyJx5RT7l5glwMXZO0UCgYEAtIMS2xpTK5Ew0U/A\nBoGK5J8O5mqtyNy91gdpOg3LyifdfIPcW4ANOFsphKCqeJ1LCwBjw6ZaSTeKQyE2\nVGwANhxUJvML/pnsdx00kIuHGQP1Vq9QOqSKAVbakqoZWNkul9yDlEpaq8Kk+05n\n/Mdtn7jiAzBxDsaY8LW9xxaQc+M=\n-----END PRIVATE KEY-----\n",
+  "client_email": "bamboo-zone-547@appspot.gserviceaccount.com",
+  "client_id": "100889408665970902163",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://accounts.google.com/o/oauth2/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/bamboo-zone-547%40appspot.gserviceaccount.com"
+}
