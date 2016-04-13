@@ -70,10 +70,14 @@ GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
 FOOBOT_LOCATIONS = {
-    "flintbacken10": "59.310014,18.050748",
-    "Bondegatan21-Ugnen": "59.312963,18.080363",
-    "HappyWattBot05Bergsunds Strand": "59.316569,18.026894",
-    "Peringskioldsvagen58": "59.35111,17.90213",
+  "flintbacken10": "59.310014,18.050748",
+  "Bondegatan21-Ugnen": "59.312963,18.080363",
+  "HappyWattBot05Bergsunds Strand": "59.316569,18.026894",
+  "Peringskioldsvagen58": "59.35111,17.90213",
+  "cykelfabriken": "59.311971,18.082123",
+  "LBK": "59.313408,18.033371",
+  "Pauls_dagis": "59.310029,18.047490",
+  "fargfabriken_utebar":"59.314924,18.019890"
 }
 
 
