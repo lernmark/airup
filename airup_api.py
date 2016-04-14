@@ -40,7 +40,7 @@ class Record(messages.Message):
     positionLabels = messages.StringField(7)
     sourceId = messages.StringField(8, required=True)
     pm25 = messages.FloatField(9)
-    o3 = messages.FloatField(9)
+    o3 = messages.FloatField(10)
 
 class Records(messages.Message):
     records = messages.MessageField(Record, 1, repeated=True)

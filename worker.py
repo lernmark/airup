@@ -59,9 +59,9 @@ from xml.dom import minidom
 from google.appengine.ext import db
 import hashlib
 import yaml
-from httplib2 import Http
-from oauth2client.service_account import ServiceAccountCredentials
-from apiclient.discovery import build
+#from httplib2 import Http
+#from oauth2client.service_account import ServiceAccountCredentials
+#from apiclient.discovery import build
 
 #import requests
 
@@ -699,9 +699,9 @@ class RegisterRecord(webapp2.RequestHandler):
                 positionLabels=zoneTitle,
                 sourceId=self.request.get('sourceId'),
             )
-            
+
             rec.put()
-            
+
             #scopes = ['https://www.googleapis.com/auth/fusiontables']
             #credentials = ServiceAccountCredentials.from_json_keyfile_name('airupBackend-b120f4cbc1a7.json', scopes)
             #fusiontablesadmin = build('fusiontables', 'v2', credentials=credentials)
