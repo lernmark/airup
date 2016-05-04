@@ -45,6 +45,7 @@ import base64
 from google.appengine.api import taskqueue
 from google.appengine.ext import db
 from google.appengine.api import urlfetch
+from google.appengine.api import memcache
 from protorpc import messages
 from protorpc import message_types
 from protorpc import remote
@@ -65,7 +66,7 @@ import yaml
 
 #import requests
 
-GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s"
+GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyDTr4jvDt3ZM1Nv68mMR_mcw8TxyQV7x5k&latlng=%s"
 # http://apis-explorer.appspot.com/apis-explorer/?base=http://localhost:8080/_ah/api#p/
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
@@ -255,11 +256,12 @@ class Hamburg1(webapp2.RequestHandler):
         #print "HBG"
 
         def regData(url, sourceId, position):
+
             response = urllib2.urlopen(url)
             cr = csv.reader(response)
             postdata = {
-                'sourceId': '',
-                'position': '',
+                'sourceId': sourceId,
+                'position': position,
                 'pm10': '',
                 'pm25': '',
                 'o3': '',
@@ -281,8 +283,10 @@ class Hamburg1(webapp2.RequestHandler):
             except Exception, e:
                 print "No no2"
 
-            postdata.sourceId = sourceId
-            postdata.position = position
+
+
+            #postdata['sourceId'] = sourceId
+            #postdata['position'] = position
 
             self.response.write("<br/><code>DONE " + sourceId + "<code><br/>")
             taskqueue.add(url='/worker', params=postdata)
@@ -292,7 +296,7 @@ class Hamburg1(webapp2.RequestHandler):
         """
         regData("http://hamburg.luftmessnetz.de/station/70MB.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-70MB", "53.555555,9.943407")
         regData("http://hamburg.luftmessnetz.de/station/17SM.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-17SM", "53.560899,9.957213")
-        regData("http://hamburg.luftmessnetz.de/station/68HB.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-68HB", "53.592354,10.053774")
+        #regData("http://hamburg.luftmessnetz.de/station/68HB.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-68HB", "53.592354,10.053774")
         regData("http://hamburg.luftmessnetz.de/station/24FL.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-24FL", "53.638128,9.996872")
         regData("http://hamburg.luftmessnetz.de/station/61WB.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-61WB", "53.508315,9.990633")
         regData("http://hamburg.luftmessnetz.de/station/13ST.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-13ST", "53.562087,9.964416")
@@ -545,18 +549,26 @@ def get_geolocation_url_src(url):
     return urllib2.urlopen(url).read()
 
 def getGeoValue(latlng, keys, valueType):
+    #"123,123", "[country]", "short_name"
 
     url=GEOLOCATION_URL % latlng
-    data = json.loads(get_geolocation_url_src(url))
+    data = memcache.get(latlng)
+    if data is None:
+        print "getGeoValue - Data for " + latlng + " not in cache. Reading from API..."
+        data = json.loads(get_geolocation_url_src(url))
+        memcache.add(latlng,data)
 
+    results = data["results"]
     def getGeoValueForAddress(res):
         for key1 in keys:
             for ac in res["address_components"]:
                 if key1 in ac["types"]:
                     return ac[valueType]
         return None
+
+
     for key in keys:
-        for res in data["results"]:
+        for res in results:
             if key in res["types"]:
                 returnVal = getGeoValueForAddress(res)
                 return returnVal
@@ -564,7 +576,12 @@ def getGeoValue(latlng, keys, valueType):
 
 def getGeoFormattedAddress(latlng, keys):
     url=GEOLOCATION_URL % latlng
-    data = json.loads(get_geolocation_url_src(url))
+    data = memcache.get(latlng)
+    if data is None:
+        print "getGeoFormattedAddress - Data for " + latlng + " not in cache. Reading from API..."
+        data = json.loads(get_geolocation_url_src(url))
+        memcache.add(latlng,data)
+
 
     for key in keys:
         for res in data["results"]:
@@ -574,7 +591,11 @@ def getGeoFormattedAddress(latlng, keys):
 
 def getGeoPosition(latlng, keys):
     url=GEOLOCATION_URL % latlng
-    data = json.loads(get_geolocation_url_src(url))
+    data = memcache.get(latlng)
+    if data is None:
+        print "getGeoPosition - Data for " + latlng + " not in cache. Reading from API..."
+        data = json.loads(get_geolocation_url_src(url))
+        memcache.add(latlng,data)
 
     for key in keys:
         for res in data["results"]:
@@ -595,6 +616,8 @@ def getLocationContext(latlng):
     zoneSubTitle = ", ".join(addrList).decode("utf-8")
 
     country = getGeoValue(latlng, ["country"], "short_name")
+    if country is None:
+        return None
 
     context["zoneTitle"] = zoneTitle
     context["zoneSubTitle"] = zoneSubTitle
@@ -702,8 +725,10 @@ class RegisterRecord(webapp2.RequestHandler):
 
             rec.put()
 
-            #scopes = ['https://www.googleapis.com/auth/fusiontables']
+            # Save data in fusion table.
+            scopes = ['https://www.googleapis.com/auth/fusiontables']
             #credentials = ServiceAccountCredentials.from_json_keyfile_name('airupBackend-b120f4cbc1a7.json', scopes)
+            #credentials = ServiceAccountCredentials.from_json_keyfile_name('airupdata-297e9f1e1562.json', scopes)
             #fusiontablesadmin = build('fusiontables', 'v2', credentials=credentials)
             #fusiontablesadmin.query().sql(sql="INSERT INTO 1VQ8VQZwKY7zjrTqAxQTtlYdt18bjsbU7Gx4_nyK7 ('Source ID','index','Date','Pos') VALUES ('" + self.request.get('sourceId') + "', " + aqiValue + ", '" + datetime.datetime.fromtimestamp(float(timestamp)) + "', '" + self.request.get('position') + "') ").execute()
 
@@ -768,11 +793,17 @@ class RegisterRecord(webapp2.RequestHandler):
             zd.title=zoneTitle
             zd.subtitle=zoneSubTitle
             zd.stations=stations
-            zd.numberOfMeasurements=str(res.count())
-            if res.count() > 0:
-                zd.index=avrIndex/res.count()
-            else:
-                zd.index=float(res[0].index)
+            try:
+                zd.numberOfMeasurements=str(res.count())
+                if res.count() > 0:
+                    zd.index=avrIndex/res.count()
+                else:
+                    zd.index=float(res[0].index)
+            except Exception, e:
+            	print "numberOfMeasurements and index set to 0"
+                zd.numberOfMeasurements = 0
+                zd.index = 0
+
             zd.co=co
             zd.no2=no2
             zd.pm10=pm10
