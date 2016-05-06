@@ -8,6 +8,9 @@ cron:
 - description: Import data from Hamburg
   url: /hamburg1
   schedule: every 122 minutes
+- description: Import data from Linkoping
+  url: /linkoping
+  schedule: every 122 minutes
 - description: Import data from EAA
   url: /eaa?country=se
   schedule: every 710 minutes

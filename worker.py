@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 #
 # Copyright 2007 Google Inc.
 #
@@ -6,7 +7,6 @@
 # http://www.ehp.qld.gov.au/cgi-bin/air/xml.php?category=1&region=ALL
 # http://campodenno.taslab.eu/stazioni/json?id=CMD001
 # coding=utf-8
-
 """
 NY - 40.714224,-73.961452
 SP - -23.560057,-46.634334
@@ -33,6 +33,8 @@ Data from http://luft.hamburg.de/
 EAA
 http://fme.discomap.eea.europa.eu/fmedatastreaming/AirQuality/AirQualityUTDExport.fmw?FromDate=2015-03-17&ToDate=2015-03-17&Countrycode=se&InsertedSinceDate=&UpdatedSinceDate=&Pollutant=PM10,SO2,NO2,CO&Namespace=&Format=XML&UserToken=6C2D03D8-04E1-4D07-B856-D92ACE0FA832
 """
+import sys
+sys.path.insert(0, 'libs')
 import os
 import ast
 import logging
@@ -56,10 +58,12 @@ import time
 import csv
 import StringIO
 import json
+import re
 from xml.dom import minidom
 from google.appengine.ext import db
 import hashlib
 import yaml
+from bs4 import BeautifulSoup
 #from httplib2 import Http
 #from oauth2client.service_account import ServiceAccountCredentials
 #from apiclient.discovery import build
@@ -444,15 +448,69 @@ class Umea(webapp2.RequestHandler):
     	self.response.write(payload)
 
 class Sthlm(webapp2.RequestHandler):
-	def get(self):
-		url = "http://slb.nu/cgi-bin/airweb.gifgraphic.cgi?format=txt&zmacro=lvf/air/timdatabas//lvf-kvavedioxd_flera.ic&from=130507&to=130508&path=/usr/airviro/data/sthlm/&lang=swe&rsrc=Halter.4.MainPage&st=lvf&regionPath="
-		response = urllib2.urlopen(url);
-		cr = csv.reader(response)
-		for row in cr:
-			print "z".join(row)
-			#for col in row:
-				#if col[:1] <> "#":
-					#print col
+    def get(self):
+        SLB_LOCATIONS = {
+          "Hornsgatan": "59.310014,18.050748",
+          "Folkungagatan": "59.312963,18.080363",
+          "Lilla Essingen (E4/E20)": "59.316569,18.026894",
+          "Södertälje Turingegatan": "59.35111,17.90213",
+          "Uppsala Kungsgatan": "59.311971,18.082123",
+          "Gävle Södra Kungsgatan": "59.313408,18.033371"
+        }
+        SLB_POLLUTANT = ["pm10", "pm25", "no2", "o3"]
+
+        def find_between( s, first, last ):
+            try:
+                start = s.index( first ) + len( first )
+                end = s.index( last, start )
+                return s[start:end]
+            except ValueError:
+                return ""
+
+        url = "http://slb.nu/slbanalys/luften-idag/"
+        headers = {'Accept':'text/html;charset=UTF-8','Content-Type':'text/html'}
+        result = urlfetch.fetch(
+            url,
+            headers=headers,
+            method='GET'
+        )
+        soup = BeautifulSoup(result.content, 'html.parser')
+        scripts = soup.find_all('script')
+        start = "var data = google.visualization.arrayToDataTable("
+        end = ");"
+        slbLocations = {
+          "Hornsgatan": {'sourceId': 'SLB-Hornsgatan','position': '59.317242,18.049891','pm10': '','pm25': '','o3': '','no2': ''},
+          "Folkungagatan": {'sourceId': 'SLB-Folkungagatan','position': '59.314508,18.075318','pm10': '','pm25': '','o3': '','no2': ''},
+          "Lilla Essingen (E4/E20)": {'sourceId': 'SLB-Lilla Essingen','position': '59.325304,18.00296','pm10': '','pm25': '','o3': '','no2': ''},
+          "Södertälje Turingegatan": {'sourceId': 'SLB-Sodertalje Turingegatan','position': '59.199148,17.625546','pm10': '','pm25': '','o3': '','no2': ''},
+          "Uppsala Kungsgatan": {'sourceId': 'SLB-Uppsala Kungsgatan','position': '59.199148,17.625546','pm10': '','pm25': '','o3': '','no2': ''},
+          "Gävle Södra Kungsgatan": {'sourceId': 'SLB-Gavle Sodra Kungsgatan','position': '60.672235,17.146665','pm10': '','pm25': '','o3': '','no2': ''},
+        }
+        payload = {'sourceId': '','position': '','pm10': '','pm25': '','o3': '','no2': ''}
+        j = 0
+        for scr in scripts:
+            scrStr = str(scr)
+            if start in scrStr:
+                slbDataJs = str(find_between( scrStr, start, end))
+                slbDataJs = slbDataJs.replace("null","None")
+                slbData = ast.literal_eval(slbDataJs)
+                i = 0
+                for locationTitle in slbData[0]:
+                    try:
+                        position = SLB_LOCATIONS[locationTitle]
+                        pass
+                    except Exception as e:
+                        position = None
+                    if position:
+                        dataValue = slbData[-1][i]
+                        slbLocations[locationTitle][SLB_POLLUTANT[j]] = str(dataValue)
+                    i = i + 1
+                j = j + 1
+        for pl in slbLocations:
+            self.response.write("<p>" + str(slbLocations[pl]) + "</p>")
+            taskqueue.add(url='/worker', params=slbLocations[pl])
+
+
 
 
 tableAqiIndex = [ range(0, 50, 1),range(51, 100, 1),range(101, 150, 1),range(151, 200, 1),range(201, 300, 1),range(301, 400, 1),range(401, 500, 1) ]
@@ -830,9 +888,6 @@ class RegisterRecord(webapp2.RequestHandler):
             rec = db.get(myKey)
             rec.report = zd.to_JSON()
             rec.put()
-
-
-
 
 
 
