@@ -78,7 +78,9 @@ FOOBOT_LOCATIONS = {
   "cykelfabriken": "59.311971,18.082123",
   "LBK": "59.313408,18.033371",
   "Pauls_dagis": "59.310029,18.047490",
-  "fargfabriken_utebar":"59.314924,18.019890"
+  "fargfabriken_utebar":"59.314924,18.019890",
+  "Peringv58_VerifyPaul":"59.35111,17.90213",
+  "Atterbomsvagen":"59.3273015,18.0088859"
 }
 
 
