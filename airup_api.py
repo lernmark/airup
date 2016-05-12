@@ -124,7 +124,7 @@ def getRawData(offset,prefix):
     try:
         offset = str(int(offset)*int(300))
         dataArr = []
-        dataResult = db.GqlQuery("SELECT * FROM Records LIMIT 300 OFFSET " + offset)
+        dataResult = db.GqlQuery("SELECT * FROM Records ORDER BY timestamp DESC LIMIT 300 OFFSET " + offset)
         for d in dataResult:
             # datetime.strptime("2015-12-16 21:10:22.670000"[0:19],"%Y-%m-%d %H:%M:%S")
             # time.strptime(str(d.timestamp),"%Y-%m-%d %H:%M:%S.%f")
@@ -139,7 +139,7 @@ def getRawData(offset,prefix):
                     co = d.co,
                     no2 = d.no2,
                     pm25 = d.pm25,
-                    c3 = d.c3,
+                    o3 = d.o3,
                     index = d.index,
                     position = str(d.position),
                     positionLabels = d.positionLabels,

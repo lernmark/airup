@@ -126,25 +126,27 @@ class Linkoping(webapp2.RequestHandler):
     def get(self):
         isotoday = datetime.datetime.now().date().isoformat()
         url = "http://nods.se/rest/air/municipalities/0580?from=" + isotoday + "&minified=true"
+        print url
         headers = {'Accept':'application/json;charset=UTF-8','Content-Type':'application/json'}
         result = urlfetch.fetch(
             url,
             headers=headers,
             method='GET'
         )
+        try:
+            data = json.loads(result.content)
+            dataLatest = data['airMeasurements'][0]
+            postdata = {}
+            time = dataLatest["time"]
+            pm = dataLatest["value"]
+            postdata['sourceId'] = "Linkoping-hamngatan-nods"
+            postdata['position'] = "58.408413,15.631572"
+            postdata['pm10'] = str(pm)
+            taskqueue.add(url='/worker', params=postdata)
+            self.response.write(postdata)
 
-        data = json.loads(result.content)
-        dataLatest = data['airMeasurements'][0]
-        postdata = {}
-        time = dataLatest["time"]
-        pm = dataLatest["value"]
-        postdata['sourceId'] = "Linkoping-hamngatan-nods"
-        postdata['position'] = "58.408413,15.631572"
-        postdata['pm10'] = str(pm)
-        taskqueue.add(url='/worker', params=postdata)
-        self.response.write(postdata)
-
-
+        except Exception, e:
+            self.response.write("no data available: " + url)
 
 class Foobot(webapp2.RequestHandler):
     def get(self):
