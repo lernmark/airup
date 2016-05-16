@@ -122,6 +122,49 @@ class Bot(webapp2.RequestHandler):
         self.response.write(postdata)
 
 
+
+
+#http://www.airnowapi.org/aq/data/?startDate=2016-05-15T22&endDate=2016-05-15T23&parameters=O3,PM25,PM10,CO,NO2,SO2&BBOX=-124.205070,28.716781,-75.337882,45.419415&dataType=B&format=application/json&verbose=0&API_KEY=0A8FF804-8227-4C80-A150-A495616F30DB
+class Airnow(webapp2.RequestHandler):
+    def get(self):
+        isotoday = datetime.datetime.now().date().isoformat()
+        hour = datetime.datetime.now().hour
+        url = "http://www.airnowapi.org/aq/data/?startDate=" + isotoday + "T" + str(hour) + "&endDate=" + isotoday + "T" + str(hour+1) + "&parameters=O3,PM25,PM10,CO,NO2&BBOX=-124.205070,28.716781,-75.337882,45.419415&dataType=B&format=application/json&verbose=0&API_KEY=0A8FF804-8227-4C80-A150-A495616F30DB"
+        #url = "http://www.airnowapi.org/aq/data/?startDate=2016-05-15T22&endDate=2016-05-15T23&parameters=PM25,PM10&BBOX=-116.938171,27.476288,-73.520203,43.154850&dataType=B&format=application/json&verbose=0&API_KEY=0A8FF804-8227-4C80-A150-A495616F30DB"
+        print url
+        #self.response.write(url)
+        headers = {'Accept':'application/json;charset=UTF-8','Content-Type':'application/json'}
+        result = urlfetch.fetch(
+            url,
+            headers=headers,
+            method='GET'
+        )
+        try:
+            #hashlib.md5(zoneKeyInputString.encode('ascii', 'ignore').decode('ascii')).hexdigest()
+            data = json.loads(result.content)
+            for obj in data:
+                postdata = {}
+                #{u'Category': 1, u'Longitude': -123.64835, u'UTC': u'2016-05-15T22:00', u'Parameter': u'PM2.5', u'AQI': 7, u'Latitude': 42.1617, u'Value': 1.6, u'Unit': u'UG/M3'},
+                lat = obj['Latitude']
+                lon = obj['Longitude']
+                position = str(lat) + "," + str(lon)
+                sourceId = "AirNow" + hashlib.md5(position.encode('ascii', 'ignore').decode('ascii')).hexdigest()
+                parameter = obj['Parameter']
+                if parameter == 'OZONE':
+                    parameter = parameter.replace('OZONE', 'o3')
+                    print parameter
+
+                value = str(obj['Value'])
+                postdata['sourceId'] = sourceId
+                postdata['position'] = position
+                postdata[parameter.lower()] = value
+                taskqueue.add(url='/worker', params=postdata)
+
+            self.response.write(data)
+
+        except Exception, e:
+            self.response.write(e)
+
 class Linkoping(webapp2.RequestHandler):
     def get(self):
         isotoday = datetime.datetime.now().date().isoformat()
@@ -213,6 +256,38 @@ class Foobot(webapp2.RequestHandler):
         else:
             self.response.write(resLogin.content)
 
+#http://www.stateair.net/web/rss/1/1.xml
+class Stateair(webapp2.RequestHandler):
+
+    def get(self):
+
+        def getText(nodelist):
+            rc = []
+            for node in nodelist:
+                if node.nodeType == node.TEXT_NODE:
+                    rc.append(node.data)
+            return ''.join(rc).encode("utf-8","ignore")
+
+        def regData(url, sourceId, position):
+
+            response = urllib2.urlopen(url, timeout = 90)
+            xmldoc = minidom.parse(response)
+            items = xmldoc.getElementsByTagName('item')
+            latestItem = items[0]
+            conc = latestItem.getElementsByTagName("Conc")[0]
+            postdata = {}
+            postdata['sourceId'] = sourceId
+            postdata['position'] = position
+            postdata['pm25'] = str(getText(conc.childNodes))
+            self.response.write(postdata)
+            taskqueue.add(url='/worker', params=postdata)
+
+        regData("http://www.stateair.net/web/rss/1/1.xml", "StateairBeijing", "39.904211,116.407395")
+        regData("http://www.stateair.net/web/rss/1/2.xml", "StateairChengdu", "30.572816,104.066801")
+        regData("http://www.stateair.net/web/rss/1/3.xml", "StateairGuangzhou", "23.129110,113.264385")
+        regData("http://www.stateair.net/web/rss/1/4.xml", "StateairShanghai", "31.230416,121.473701")
+        regData("http://www.stateair.net/web/rss/1/5.xml", "StateairShenyang", "41.805699,123.431472")
+
 
 class Eaa(webapp2.RequestHandler):
 
@@ -246,8 +321,6 @@ class Eaa(webapp2.RequestHandler):
                 postdata['sourceId'] = "EAA-"+getText(station_code.childNodes)
                 postdata['position'] = posy + "," + posx
                 postdata[getText(pollutant.childNodes).lower()] = str(getText(value_numeric.childNodes))
-                postdata['co'] = "0.3"
-                postdata['no2'] = "0.4"
                 self.response.write(postdata)
                 taskqueue.add(url='/worker', params=postdata)
 
@@ -906,12 +979,14 @@ app = webapp2.WSGIApplication([
         ('/worker', RegisterRecord),
         ('/bot', Bot),
         ('/linkoping', Linkoping),
+        ('/airnow', Airnow),
         ('/gbg1', Goteborg),
         ('/umea1', Umea),
         ('/hamburg1', Hamburg1),
         ('/sthlm', Sthlm),
         ('/eaa',Eaa),
         ('/foobot',Foobot),
+        ('/stateair',Stateair),
         ('/submitToQueue',SubmitToQueue),
         ('/index.html', Index)
     ], debug=True)
