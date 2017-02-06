@@ -67,7 +67,6 @@ from bs4 import BeautifulSoup
 #from httplib2 import Http
 #from oauth2client.service_account import ServiceAccountCredentials
 #from apiclient.discovery import build
-
 #import requests
 
 GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyDTr4jvDt3ZM1Nv68mMR_mcw8TxyQV7x5k&latlng=%s"
@@ -127,12 +126,14 @@ class Bot(webapp2.RequestHandler):
 #http://www.airnowapi.org/aq/data/?startDate=2016-05-15T22&endDate=2016-05-15T23&parameters=O3,PM25,PM10,CO,NO2,SO2&BBOX=-124.205070,28.716781,-75.337882,45.419415&dataType=B&format=application/json&verbose=0&API_KEY=0A8FF804-8227-4C80-A150-A495616F30DB
 class Airnow(webapp2.RequestHandler):
     def get(self):
-        isotoday = datetime.datetime.now().date().isoformat()
-        hour = datetime.datetime.now().hour
+        isonowinUsa = datetime.datetime.now() - datetime.timedelta(hours=1)
+        isotoday = isonowinUsa.date().isoformat()
+        hour = isonowinUsa.hour
         url = "http://www.airnowapi.org/aq/data/?startDate=" + isotoday + "T" + str(hour) + "&endDate=" + isotoday + "T" + str(hour+1) + "&parameters=O3,PM25,PM10,CO,NO2&BBOX=-124.205070,28.716781,-75.337882,45.419415&dataType=B&format=application/json&verbose=0&API_KEY=0A8FF804-8227-4C80-A150-A495616F30DB"
         #url = "http://www.airnowapi.org/aq/data/?startDate=2016-05-15T22&endDate=2016-05-15T23&parameters=PM25,PM10&BBOX=-116.938171,27.476288,-73.520203,43.154850&dataType=B&format=application/json&verbose=0&API_KEY=0A8FF804-8227-4C80-A150-A495616F30DB"
         print url
         #self.response.write(url)
+
         headers = {'Accept':'application/json;charset=UTF-8','Content-Type':'application/json'}
         result = urlfetch.fetch(
             url,
@@ -152,8 +153,6 @@ class Airnow(webapp2.RequestHandler):
                 parameter = obj['Parameter']
                 if parameter == 'OZONE':
                     parameter = parameter.replace('OZONE', 'o3')
-                    print parameter
-
                 value = str(obj['Value'])
                 postdata['sourceId'] = sourceId
                 postdata['position'] = position
@@ -287,6 +286,8 @@ class Stateair(webapp2.RequestHandler):
         regData("http://www.stateair.net/web/rss/1/3.xml", "StateairGuangzhou", "23.129110,113.264385")
         regData("http://www.stateair.net/web/rss/1/4.xml", "StateairShanghai", "31.230416,121.473701")
         regData("http://www.stateair.net/web/rss/1/5.xml", "StateairShenyang", "41.805699,123.431472")
+        regData("https://stateair.mn/rss.xml", "StateairUlanBator", "47.886399,106.905744")
+
 
 
 class Eaa(webapp2.RequestHandler):
@@ -585,6 +586,74 @@ class Sthlm(webapp2.RequestHandler):
             self.response.write("<p>" + str(slbLocations[pl]) + "</p>")
             taskqueue.add(url='/worker', params=slbLocations[pl])
 
+class StateairIndia(webapp2.RequestHandler):
+    def get(self):
+        # SLB_LOCATIONS = {
+        #   "Hornsgatan": "59.310014,18.050748",
+        #   "Folkungagatan": "59.312963,18.080363",
+        #   "Lilla Essingen (E4/E20)": "59.316569,18.026894",
+        #   "Södertälje Turingegatan": "59.35111,17.90213",
+        #   "Uppsala Kungsgatan": "59.311971,18.082123",
+        #   "Gävle Södra Kungsgatan": "59.313408,18.033371"
+        # }
+        # SLB_POLLUTANT = ["pm10", "pm25", "no2", "o3"]
+        #
+        def find_between( s, first, last ):
+            try:
+                start = s.index( first ) + len( first )
+                end = s.index( last, start )
+                return s[start:end]
+            except ValueError:
+                return ""
+
+        url = "http://newdelhi.usembassy.gov/dyn/airqualitydataemb/air-quality-indicator-proxy.html"
+        headers = {'Accept':'text/html;charset=UTF-8','Content-Type':'text/html'}
+        result = urlfetch.fetch(
+            url,
+            headers=headers,
+            method='GET'
+        )
+        soup = BeautifulSoup(result.content, 'html.parser')
+        scripts = soup.find_all('script')
+        scrStr = str(scripts[1])
+
+        start = '$("#HD_Cval").text("';
+        end = '");'
+        if start in scrStr:
+            hyderabad = str(find_between( scrStr, start, end))
+            self.response.write(hyderabad)
+
+        indiaLocations = {
+          "Hornsgatan": {'sourceId': 'SLB-Hornsgatan','position': '59.317242,18.049891','pm10': '','pm25': '','o3': '','no2': ''},
+          "Hyderabad": {'sourceId': 'UsConsulateHyderabad','position': '17.436926,78.489401','pm10': '','pm25': '','o3': '','no2': ''},
+          "Lilla Essingen (E4/E20)": {'sourceId': 'SLB-Lilla Essingen','position': '59.325304,18.00296','pm10': '','pm25': '','o3': '','no2': ''},
+          "Södertälje Turingegatan": {'sourceId': 'SLB-Sodertalje Turingegatan','position': '59.199148,17.625546','pm10': '','pm25': '','o3': '','no2': ''},
+          "Uppsala Kungsgatan": {'sourceId': 'SLB-Uppsala Kungsgatan','position': '59.199148,17.625546','pm10': '','pm25': '','o3': '','no2': ''},
+          "Gävle Södra Kungsgatan": {'sourceId': 'SLB-Gavle Sodra Kungsgatan','position': '60.672235,17.146665','pm10': '','pm25': '','o3': '','no2': ''},
+        }
+        # payload = {'sourceId': '','position': '','pm10': '','pm25': '','o3': '','no2': ''}
+        # j = 0
+        # for scr in scripts:
+        #     scrStr = str(scr)
+        #     if start in scrStr:
+        #         slbDataJs = str(find_between( scrStr, start, end))
+        #         slbDataJs = slbDataJs.replace("null","None")
+        #         slbData = ast.literal_eval(slbDataJs)
+        #         i = 0
+        #         for locationTitle in slbData[0]:
+        #             try:
+        #                 position = SLB_LOCATIONS[locationTitle]
+        #                 pass
+        #             except Exception as e:
+        #                 position = None
+        #             if position:
+        #                 dataValue = slbData[-1][i]
+        #                 slbLocations[locationTitle][SLB_POLLUTANT[j]] = str(dataValue)
+        #             i = i + 1
+        #         j = j + 1
+        # for pl in slbLocations:
+        #     self.response.write("<p>" + str(slbLocations[pl]) + "</p>")
+        #     taskqueue.add(url='/worker', params=slbLocations[pl])
 
 
 
@@ -713,7 +782,7 @@ def getGeoFormattedAddress(latlng, keys):
     url=GEOLOCATION_URL % latlng
     data = memcache.get(latlng)
     if data is None:
-        print "getGeoFormattedAddress - Data for " + latlng + " not in cache. Reading from API..."
+        #print "getGeoFormattedAddress - Data for " + latlng + " not in cache. Reading from API..."
         data = json.loads(get_geolocation_url_src(url))
         memcache.add(latlng,data)
 
@@ -980,6 +1049,7 @@ app = webapp2.WSGIApplication([
         ('/bot', Bot),
         ('/linkoping', Linkoping),
         ('/airnow', Airnow),
+        ('/india', StateairIndia),
         ('/gbg1', Goteborg),
         ('/umea1', Umea),
         ('/hamburg1', Hamburg1),
