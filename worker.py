@@ -742,24 +742,27 @@ def getGeoPosition(latlng, keys):
 def getLocationContext(latlng):
     context = {}
     keyList = ["neighborhood","sublocality_level_2","sublocality_level_1","administrative_area_level_3","colloquial_area","postal_code"]
-    addrString = getGeoFormattedAddress(latlng, keyList).encode("utf-8")
-    hoodPosition = getGeoPosition(latlng, keyList)
-    addrList = addrString.split(", ")
-    zoneTitle = addrList[0].decode("utf-8","ignore")
-    addrList.remove(addrList[0])
-    addrList.remove(addrList[-1])
-    zoneSubTitle = ", ".join(addrList).decode("utf-8")
-
-    country = getGeoValue(latlng, ["country"], "short_name")
-    if country is None:
+    try:
+        addrString = getGeoFormattedAddress(latlng, keyList).encode("utf-8")
+        hoodPosition = getGeoPosition(latlng, keyList)
+        addrList = addrString.split(", ")
+        zoneTitle = addrList[0].decode("utf-8","ignore")
+        addrList.remove(addrList[0])
+        addrList.remove(addrList[-1])
+        zoneSubTitle = ", ".join(addrList).decode("utf-8")
+    
+        country = getGeoValue(latlng, ["country"], "short_name")
+        if country is None:
+            return None
+    
+        context["zoneTitle"] = zoneTitle
+        context["zoneSubTitle"] = zoneSubTitle
+        context["country"] = country
+        context["zoneKey"] = generateZoneKey(zoneTitle,zoneSubTitle,country)
+        context["position"] = hoodPosition
+        return context
+    except Exception, e:
         return None
-
-    context["zoneTitle"] = zoneTitle
-    context["zoneSubTitle"] = zoneSubTitle
-    context["country"] = country
-    context["zoneKey"] = generateZoneKey(zoneTitle,zoneSubTitle,country)
-    context["position"] = hoodPosition
-    return context
 
 def generateZoneKey(zoneTitle,zoneSubTitle,country):
     zoneKeyInputString = zoneTitle + zoneSubTitle + country

@@ -13,8 +13,30 @@
     "find.nak": {
         "@searchLimit": 100
     },
+    "format": {
+        "jsbeautify": {
+            "@advanced": {},
+            "@braces": "end-expand",
+            "@indent_inner_html": false,
+            "@jslinthappy": "false",
+            "@keeparrayindentation": "false",
+            "@preserveempty": "true",
+            "@space_before_conditional": "true",
+            "@unescape_strings": "true"
+        }
+    },
     "general": {
         "@stripws": false
+    },
+    "golang": {
+        "@completion": true,
+        "@formatOnSave": true,
+        "@formatter": "gofmt -w \"$file\""
+    },
+    "javascript": {
+        "@formatOnSave": "false",
+        "@formatter": "esformatter -i \"$file\"",
+        "@use_jsbeautify": "true"
     },
     "language": {
         "@eslintrc": "true",
