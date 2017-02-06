@@ -139,7 +139,7 @@ def getRawData(offset,prefix):
                     co = d.co,
                     no2 = d.no2,
                     pm25 = d.pm25,
-                    c3 = d.c3,
+                    o3 = d.o3,
                     index = d.index,
                     position = str(d.position),
                     positionLabels = d.positionLabels,
