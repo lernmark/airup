@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 #
 # Copyright 2007 Google Inc.
 #
@@ -6,7 +7,6 @@
 # http://www.ehp.qld.gov.au/cgi-bin/air/xml.php?category=1&region=ALL
 # http://campodenno.taslab.eu/stazioni/json?id=CMD001
 # coding=utf-8
-
 """
 NY - 40.714224,-73.961452
 SP - -23.560057,-46.634334
@@ -33,6 +33,8 @@ Data from http://luft.hamburg.de/
 EAA
 http://fme.discomap.eea.europa.eu/fmedatastreaming/AirQuality/AirQualityUTDExport.fmw?FromDate=2015-03-17&ToDate=2015-03-17&Countrycode=se&InsertedSinceDate=&UpdatedSinceDate=&Pollutant=PM10,SO2,NO2,CO&Namespace=&Format=XML&UserToken=6C2D03D8-04E1-4D07-B856-D92ACE0FA832
 """
+import sys
+sys.path.insert(0, 'libs')
 import os
 import ast
 import logging
@@ -45,6 +47,7 @@ import base64
 from google.appengine.api import taskqueue
 from google.appengine.ext import db
 from google.appengine.api import urlfetch
+from google.appengine.api import memcache
 from protorpc import messages
 from protorpc import message_types
 from protorpc import remote
@@ -55,25 +58,33 @@ import time
 import csv
 import StringIO
 import json
+import re
 from xml.dom import minidom
 from google.appengine.ext import db
 import hashlib
 import yaml
-from httplib2 import Http
-from oauth2client.service_account import ServiceAccountCredentials
-from apiclient.discovery import build
+from bs4 import BeautifulSoup
+#from httplib2 import Http
+#from oauth2client.service_account import ServiceAccountCredentials
+#from apiclient.discovery import build
 
 #import requests
 
-GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyA1WnmUgVJtsGuWoyHh-U8zlKRcGlSACXU&latlng=%s"
+GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyDTr4jvDt3ZM1Nv68mMR_mcw8TxyQV7x5k&latlng=%s"
 # http://apis-explorer.appspot.com/apis-explorer/?base=http://localhost:8080/_ah/api#p/
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
 FOOBOT_LOCATIONS = {
-    "flintbacken10": "59.310014,18.050748",
-    "Bondegatan21-Ugnen": "59.312963,18.080363",
-    "HappyWattBot05Bergsunds Strand": "59.316569,18.026894",
-    "Peringskioldsvagen58": "59.35111,17.90213",
+  "flintbacken10": "59.310014,18.050748",
+  "Bondegatan21-Ugnen": "59.312963,18.080363",
+  "HappyWattBot05Bergsunds Strand": "59.316569,18.026894",
+  "Peringskioldsvagen58": "59.35111,17.90213",
+  "cykelfabriken": "59.311971,18.082123",
+  "LBK": "59.313408,18.033371",
+  "Pauls_dagis": "59.310029,18.047490",
+  "fargfabriken_utebar":"59.314924,18.019890",
+  "Peringv58_VerifyPaul":"59.35111,17.90213",
+  "Atterbomsvagen":"59.3273015,18.0088859"
 }
 
 
@@ -111,29 +122,74 @@ class Bot(webapp2.RequestHandler):
         self.response.write(postdata)
 
 
-class Linkoping(webapp2.RequestHandler):
+
+
+#http://www.airnowapi.org/aq/data/?startDate=2016-05-15T22&endDate=2016-05-15T23&parameters=O3,PM25,PM10,CO,NO2,SO2&BBOX=-124.205070,28.716781,-75.337882,45.419415&dataType=B&format=application/json&verbose=0&API_KEY=0A8FF804-8227-4C80-A150-A495616F30DB
+class Airnow(webapp2.RequestHandler):
     def get(self):
         isotoday = datetime.datetime.now().date().isoformat()
-        url = "http://nods.se/rest/air/municipalities/0580?from=" + isotoday + "&minified=true"
+        hour = datetime.datetime.now().hour
+        url = "http://www.airnowapi.org/aq/data/?startDate=" + isotoday + "T" + str(hour) + "&endDate=" + isotoday + "T" + str(hour+1) + "&parameters=O3,PM25,PM10,CO,NO2&BBOX=-124.205070,28.716781,-75.337882,45.419415&dataType=B&format=application/json&verbose=0&API_KEY=0A8FF804-8227-4C80-A150-A495616F30DB"
+        #url = "http://www.airnowapi.org/aq/data/?startDate=2016-05-15T22&endDate=2016-05-15T23&parameters=PM25,PM10&BBOX=-116.938171,27.476288,-73.520203,43.154850&dataType=B&format=application/json&verbose=0&API_KEY=0A8FF804-8227-4C80-A150-A495616F30DB"
+        print url
+        #self.response.write(url)
         headers = {'Accept':'application/json;charset=UTF-8','Content-Type':'application/json'}
         result = urlfetch.fetch(
             url,
             headers=headers,
             method='GET'
         )
+        try:
+            #hashlib.md5(zoneKeyInputString.encode('ascii', 'ignore').decode('ascii')).hexdigest()
+            data = json.loads(result.content)
+            for obj in data:
+                postdata = {}
+                #{u'Category': 1, u'Longitude': -123.64835, u'UTC': u'2016-05-15T22:00', u'Parameter': u'PM2.5', u'AQI': 7, u'Latitude': 42.1617, u'Value': 1.6, u'Unit': u'UG/M3'},
+                lat = obj['Latitude']
+                lon = obj['Longitude']
+                position = str(lat) + "," + str(lon)
+                sourceId = "AirNow" + hashlib.md5(position.encode('ascii', 'ignore').decode('ascii')).hexdigest()
+                parameter = obj['Parameter']
+                if parameter == 'OZONE':
+                    parameter = parameter.replace('OZONE', 'o3')
+                    print parameter
 
-        data = json.loads(result.content)
-        dataLatest = data['airMeasurements'][0]
-        postdata = {}
-        time = dataLatest["time"]
-        pm = dataLatest["value"]
-        postdata['sourceId'] = "Linkoping-hamngatan-nods"
-        postdata['position'] = "58.408413,15.631572"
-        postdata['pm10'] = str(pm)
-        taskqueue.add(url='/worker', params=postdata)
-        self.response.write(postdata)
+                value = str(obj['Value'])
+                postdata['sourceId'] = sourceId
+                postdata['position'] = position
+                postdata[parameter.lower()] = value
+                taskqueue.add(url='/worker', params=postdata)
 
+            self.response.write(data)
 
+        except Exception, e:
+            self.response.write(e)
+
+class Linkoping(webapp2.RequestHandler):
+    def get(self):
+        isotoday = datetime.datetime.now().date().isoformat()
+        url = "http://nods.se/rest/air/municipalities/0580?from=" + isotoday + "&minified=true"
+        print url
+        headers = {'Accept':'application/json;charset=UTF-8','Content-Type':'application/json'}
+        result = urlfetch.fetch(
+            url,
+            headers=headers,
+            method='GET'
+        )
+        try:
+            data = json.loads(result.content)
+            dataLatest = data['airMeasurements'][0]
+            postdata = {}
+            time = dataLatest["time"]
+            pm = dataLatest["value"]
+            postdata['sourceId'] = "Linkoping-hamngatan-nods"
+            postdata['position'] = "58.408413,15.631572"
+            postdata['pm10'] = str(pm)
+            taskqueue.add(url='/worker', params=postdata)
+            self.response.write(postdata)
+
+        except Exception, e:
+            self.response.write("no data available: " + url)
 
 class Foobot(webapp2.RequestHandler):
     def get(self):
@@ -200,6 +256,38 @@ class Foobot(webapp2.RequestHandler):
         else:
             self.response.write(resLogin.content)
 
+#http://www.stateair.net/web/rss/1/1.xml
+class Stateair(webapp2.RequestHandler):
+
+    def get(self):
+
+        def getText(nodelist):
+            rc = []
+            for node in nodelist:
+                if node.nodeType == node.TEXT_NODE:
+                    rc.append(node.data)
+            return ''.join(rc).encode("utf-8","ignore")
+
+        def regData(url, sourceId, position):
+
+            response = urllib2.urlopen(url, timeout = 90)
+            xmldoc = minidom.parse(response)
+            items = xmldoc.getElementsByTagName('item')
+            latestItem = items[0]
+            conc = latestItem.getElementsByTagName("Conc")[0]
+            postdata = {}
+            postdata['sourceId'] = sourceId
+            postdata['position'] = position
+            postdata['pm25'] = str(getText(conc.childNodes))
+            self.response.write(postdata)
+            taskqueue.add(url='/worker', params=postdata)
+
+        regData("http://www.stateair.net/web/rss/1/1.xml", "StateairBeijing", "39.904211,116.407395")
+        regData("http://www.stateair.net/web/rss/1/2.xml", "StateairChengdu", "30.572816,104.066801")
+        regData("http://www.stateair.net/web/rss/1/3.xml", "StateairGuangzhou", "23.129110,113.264385")
+        regData("http://www.stateair.net/web/rss/1/4.xml", "StateairShanghai", "31.230416,121.473701")
+        regData("http://www.stateair.net/web/rss/1/5.xml", "StateairShenyang", "41.805699,123.431472")
+
 
 class Eaa(webapp2.RequestHandler):
 
@@ -233,8 +321,6 @@ class Eaa(webapp2.RequestHandler):
                 postdata['sourceId'] = "EAA-"+getText(station_code.childNodes)
                 postdata['position'] = posy + "," + posx
                 postdata[getText(pollutant.childNodes).lower()] = str(getText(value_numeric.childNodes))
-                postdata['co'] = "0.3"
-                postdata['no2'] = "0.4"
                 self.response.write(postdata)
                 taskqueue.add(url='/worker', params=postdata)
 
@@ -251,11 +337,12 @@ class Hamburg1(webapp2.RequestHandler):
         #print "HBG"
 
         def regData(url, sourceId, position):
+
             response = urllib2.urlopen(url)
             cr = csv.reader(response)
             postdata = {
-                'sourceId': '',
-                'position': '',
+                'sourceId': sourceId,
+                'position': position,
                 'pm10': '',
                 'pm25': '',
                 'o3': '',
@@ -277,8 +364,10 @@ class Hamburg1(webapp2.RequestHandler):
             except Exception, e:
                 print "No no2"
 
-            postdata.sourceId = sourceId
-            postdata.position = position
+
+
+            #postdata['sourceId'] = sourceId
+            #postdata['position'] = position
 
             self.response.write("<br/><code>DONE " + sourceId + "<code><br/>")
             taskqueue.add(url='/worker', params=postdata)
@@ -288,7 +377,7 @@ class Hamburg1(webapp2.RequestHandler):
         """
         regData("http://hamburg.luftmessnetz.de/station/70MB.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-70MB", "53.555555,9.943407")
         regData("http://hamburg.luftmessnetz.de/station/17SM.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-17SM", "53.560899,9.957213")
-        regData("http://hamburg.luftmessnetz.de/station/68HB.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-68HB", "53.592354,10.053774")
+        #regData("http://hamburg.luftmessnetz.de/station/68HB.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-68HB", "53.592354,10.053774")
         regData("http://hamburg.luftmessnetz.de/station/24FL.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-24FL", "53.638128,9.996872")
         regData("http://hamburg.luftmessnetz.de/station/61WB.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-61WB", "53.508315,9.990633")
         regData("http://hamburg.luftmessnetz.de/station/13ST.csv?componentgroup=pollution&componentperiod=1h&searchperiod=currentday","Hamburg-13ST", "53.562087,9.964416")
@@ -434,15 +523,69 @@ class Umea(webapp2.RequestHandler):
     	self.response.write(payload)
 
 class Sthlm(webapp2.RequestHandler):
-	def get(self):
-		url = "http://slb.nu/cgi-bin/airweb.gifgraphic.cgi?format=txt&zmacro=lvf/air/timdatabas//lvf-kvavedioxd_flera.ic&from=130507&to=130508&path=/usr/airviro/data/sthlm/&lang=swe&rsrc=Halter.4.MainPage&st=lvf&regionPath="
-		response = urllib2.urlopen(url);
-		cr = csv.reader(response)
-		for row in cr:
-			print "z".join(row)
-			#for col in row:
-				#if col[:1] <> "#":
-					#print col
+    def get(self):
+        SLB_LOCATIONS = {
+          "Hornsgatan": "59.310014,18.050748",
+          "Folkungagatan": "59.312963,18.080363",
+          "Lilla Essingen (E4/E20)": "59.316569,18.026894",
+          "Södertälje Turingegatan": "59.35111,17.90213",
+          "Uppsala Kungsgatan": "59.311971,18.082123",
+          "Gävle Södra Kungsgatan": "59.313408,18.033371"
+        }
+        SLB_POLLUTANT = ["pm10", "pm25", "no2", "o3"]
+
+        def find_between( s, first, last ):
+            try:
+                start = s.index( first ) + len( first )
+                end = s.index( last, start )
+                return s[start:end]
+            except ValueError:
+                return ""
+
+        url = "http://slb.nu/slbanalys/luften-idag/"
+        headers = {'Accept':'text/html;charset=UTF-8','Content-Type':'text/html'}
+        result = urlfetch.fetch(
+            url,
+            headers=headers,
+            method='GET'
+        )
+        soup = BeautifulSoup(result.content, 'html.parser')
+        scripts = soup.find_all('script')
+        start = "var data = google.visualization.arrayToDataTable("
+        end = ");"
+        slbLocations = {
+          "Hornsgatan": {'sourceId': 'SLB-Hornsgatan','position': '59.317242,18.049891','pm10': '','pm25': '','o3': '','no2': ''},
+          "Folkungagatan": {'sourceId': 'SLB-Folkungagatan','position': '59.314508,18.075318','pm10': '','pm25': '','o3': '','no2': ''},
+          "Lilla Essingen (E4/E20)": {'sourceId': 'SLB-Lilla Essingen','position': '59.325304,18.00296','pm10': '','pm25': '','o3': '','no2': ''},
+          "Södertälje Turingegatan": {'sourceId': 'SLB-Sodertalje Turingegatan','position': '59.199148,17.625546','pm10': '','pm25': '','o3': '','no2': ''},
+          "Uppsala Kungsgatan": {'sourceId': 'SLB-Uppsala Kungsgatan','position': '59.199148,17.625546','pm10': '','pm25': '','o3': '','no2': ''},
+          "Gävle Södra Kungsgatan": {'sourceId': 'SLB-Gavle Sodra Kungsgatan','position': '60.672235,17.146665','pm10': '','pm25': '','o3': '','no2': ''},
+        }
+        payload = {'sourceId': '','position': '','pm10': '','pm25': '','o3': '','no2': ''}
+        j = 0
+        for scr in scripts:
+            scrStr = str(scr)
+            if start in scrStr:
+                slbDataJs = str(find_between( scrStr, start, end))
+                slbDataJs = slbDataJs.replace("null","None")
+                slbData = ast.literal_eval(slbDataJs)
+                i = 0
+                for locationTitle in slbData[0]:
+                    try:
+                        position = SLB_LOCATIONS[locationTitle]
+                        pass
+                    except Exception as e:
+                        position = None
+                    if position:
+                        dataValue = slbData[-1][i]
+                        slbLocations[locationTitle][SLB_POLLUTANT[j]] = str(dataValue)
+                    i = i + 1
+                j = j + 1
+        for pl in slbLocations:
+            self.response.write("<p>" + str(slbLocations[pl]) + "</p>")
+            taskqueue.add(url='/worker', params=slbLocations[pl])
+
+
 
 
 tableAqiIndex = [ range(0, 50, 1),range(51, 100, 1),range(101, 150, 1),range(151, 200, 1),range(201, 300, 1),range(301, 400, 1),range(401, 500, 1) ]
@@ -541,18 +684,26 @@ def get_geolocation_url_src(url):
     return urllib2.urlopen(url).read()
 
 def getGeoValue(latlng, keys, valueType):
+    #"123,123", "[country]", "short_name"
 
     url=GEOLOCATION_URL % latlng
-    data = json.loads(get_geolocation_url_src(url))
+    data = memcache.get(latlng)
+    if data is None:
+        print "getGeoValue - Data for " + latlng + " not in cache. Reading from API..."
+        data = json.loads(get_geolocation_url_src(url))
+        memcache.add(latlng,data)
 
+    results = data["results"]
     def getGeoValueForAddress(res):
         for key1 in keys:
             for ac in res["address_components"]:
                 if key1 in ac["types"]:
                     return ac[valueType]
         return None
+
+
     for key in keys:
-        for res in data["results"]:
+        for res in results:
             if key in res["types"]:
                 returnVal = getGeoValueForAddress(res)
                 return returnVal
@@ -560,7 +711,12 @@ def getGeoValue(latlng, keys, valueType):
 
 def getGeoFormattedAddress(latlng, keys):
     url=GEOLOCATION_URL % latlng
-    data = json.loads(get_geolocation_url_src(url))
+    data = memcache.get(latlng)
+    if data is None:
+        print "getGeoFormattedAddress - Data for " + latlng + " not in cache. Reading from API..."
+        data = json.loads(get_geolocation_url_src(url))
+        memcache.add(latlng,data)
+
 
     for key in keys:
         for res in data["results"]:
@@ -570,7 +726,11 @@ def getGeoFormattedAddress(latlng, keys):
 
 def getGeoPosition(latlng, keys):
     url=GEOLOCATION_URL % latlng
-    data = json.loads(get_geolocation_url_src(url))
+    data = memcache.get(latlng)
+    if data is None:
+        print "getGeoPosition - Data for " + latlng + " not in cache. Reading from API..."
+        data = json.loads(get_geolocation_url_src(url))
+        memcache.add(latlng,data)
 
     for key in keys:
         for res in data["results"]:
@@ -591,6 +751,8 @@ def getLocationContext(latlng):
     zoneSubTitle = ", ".join(addrList).decode("utf-8")
 
     country = getGeoValue(latlng, ["country"], "short_name")
+    if country is None:
+        return None
 
     context["zoneTitle"] = zoneTitle
     context["zoneSubTitle"] = zoneSubTitle
@@ -695,11 +857,13 @@ class RegisterRecord(webapp2.RequestHandler):
                 positionLabels=zoneTitle,
                 sourceId=self.request.get('sourceId'),
             )
-            
+
             rec.put()
-            
-            #scopes = ['https://www.googleapis.com/auth/fusiontables']
+
+            # Save data in fusion table.
+            scopes = ['https://www.googleapis.com/auth/fusiontables']
             #credentials = ServiceAccountCredentials.from_json_keyfile_name('airupBackend-b120f4cbc1a7.json', scopes)
+            #credentials = ServiceAccountCredentials.from_json_keyfile_name('airupdata-297e9f1e1562.json', scopes)
             #fusiontablesadmin = build('fusiontables', 'v2', credentials=credentials)
             #fusiontablesadmin.query().sql(sql="INSERT INTO 1VQ8VQZwKY7zjrTqAxQTtlYdt18bjsbU7Gx4_nyK7 ('Source ID','index','Date','Pos') VALUES ('" + self.request.get('sourceId') + "', " + aqiValue + ", '" + datetime.datetime.fromtimestamp(float(timestamp)) + "', '" + self.request.get('position') + "') ").execute()
 
@@ -764,11 +928,17 @@ class RegisterRecord(webapp2.RequestHandler):
             zd.title=zoneTitle
             zd.subtitle=zoneSubTitle
             zd.stations=stations
-            zd.numberOfMeasurements=str(res.count())
-            if res.count() > 0:
-                zd.index=avrIndex/res.count()
-            else:
-                zd.index=float(res[0].index)
+            try:
+                zd.numberOfMeasurements=str(res.count())
+                if res.count() > 0:
+                    zd.index=avrIndex/res.count()
+                else:
+                    zd.index=float(res[0].index)
+            except Exception, e:
+            	print "numberOfMeasurements and index set to 0"
+                zd.numberOfMeasurements = 0
+                zd.index = 0
+
             zd.co=co
             zd.no2=no2
             zd.pm10=pm10
@@ -796,9 +966,6 @@ class RegisterRecord(webapp2.RequestHandler):
 
 
 
-
-
-
 class Index(webapp2.RequestHandler):
     def get(self):
 		template_values = {
@@ -812,12 +979,14 @@ app = webapp2.WSGIApplication([
         ('/worker', RegisterRecord),
         ('/bot', Bot),
         ('/linkoping', Linkoping),
+        ('/airnow', Airnow),
         ('/gbg1', Goteborg),
         ('/umea1', Umea),
         ('/hamburg1', Hamburg1),
         ('/sthlm', Sthlm),
         ('/eaa',Eaa),
         ('/foobot',Foobot),
+        ('/stateair',Stateair),
         ('/submitToQueue',SubmitToQueue),
         ('/index.html', Index)
     ], debug=True)

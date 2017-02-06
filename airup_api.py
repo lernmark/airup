@@ -40,7 +40,7 @@ class Record(messages.Message):
     positionLabels = messages.StringField(7)
     sourceId = messages.StringField(8, required=True)
     pm25 = messages.FloatField(9)
-    o3 = messages.FloatField(9)
+    o3 = messages.FloatField(10)
 
 class Records(messages.Message):
     records = messages.MessageField(Record, 1, repeated=True)
@@ -124,7 +124,7 @@ def getRawData(offset,prefix):
     try:
         offset = str(int(offset)*int(300))
         dataArr = []
-        dataResult = db.GqlQuery("SELECT * FROM Records LIMIT 300 OFFSET " + offset)
+        dataResult = db.GqlQuery("SELECT * FROM Records ORDER BY timestamp DESC LIMIT 300 OFFSET " + offset)
         for d in dataResult:
             # datetime.strptime("2015-12-16 21:10:22.670000"[0:19],"%Y-%m-%d %H:%M:%S")
             # time.strptime(str(d.timestamp),"%Y-%m-%d %H:%M:%S.%f")

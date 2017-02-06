@@ -2,11 +2,20 @@ cron:
 - description: Import data from Göteborg
   url: /gbg1
   schedule: every 130 minutes
+- description: Import data from stateair in China
+  url: /stateair
+  schedule: every 110 minutes
+- description: Import data from Airnow
+  url: /airnow
+  schedule: every 178 minutes
 - description: Import data from Umeå
   url: /umea1
   schedule: every 188 minutes
 - description: Import data from Hamburg
   url: /hamburg1
+  schedule: every 122 minutes
+- description: Import data from Linkoping
+  url: /linkoping
   schedule: every 122 minutes
 - description: Import data from EAA
   url: /eaa?country=se
@@ -32,6 +41,9 @@ cron:
 - description: Import data from EAA
   url: /eaa?country=it
   schedule: every 770 minutes
+- description: Import data from EAA GB
+  url: /eaa?country=gb
+  schedule: every 775 minutes
 - description: Import data from EAA
   url: /eaa?country=nl
   schedule: every 780 minutes
