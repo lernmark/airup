@@ -69,7 +69,9 @@ from bs4 import BeautifulSoup
 #from apiclient.discovery import build
 #import requests
 
-GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyDTr4jvDt3ZM1Nv68mMR_mcw8TxyQV7x5k&latlng=%s"
+#GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyDTr4jvDt3ZM1Nv68mMR_mcw8TxyQV7x5k&latlng=%s"
+GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyAZQS_TBcZ2XNhApQttypDRarDWcy_phG4&latlng=%s"
+
 # http://apis-explorer.appspot.com/apis-explorer/?base=http://localhost:8080/_ah/api#p/
 
 JINJA_ENVIRONMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),extensions=['jinja2.ext.autoescape'],autoescape=True)
@@ -931,6 +933,12 @@ class RegisterRecord(webapp2.RequestHandler):
             )
 
             rec.put()
+            
+
+            reportPostdata = {}
+            reportPostdata['zoneKey'] = zoneKey
+            taskqueue.add(url='/report', params=reportPostdata)
+            self.response.write(reportPostdata)
 
             # Save data in fusion table.
             scopes = ['https://www.googleapis.com/auth/fusiontables']
@@ -939,6 +947,15 @@ class RegisterRecord(webapp2.RequestHandler):
             #fusiontablesadmin = build('fusiontables', 'v2', credentials=credentials)
             #fusiontablesadmin.query().sql(sql="INSERT INTO 1VQ8VQZwKY7zjrTqAxQTtlYdt18bjsbU7Gx4_nyK7 ('Source ID','index','Date','Pos') VALUES ('" + self.request.get('sourceId') + "', " + aqiValue + ", '" + datetime.datetime.fromtimestamp(float(timestamp)) + "', '" + self.request.get('position') + "') ").execute()
 
+
+class GenerateReport(webapp2.RequestHandler):
+    def post(self): # should run at most 1/s
+        # print "#1. Worker is registering "
+        # Only needs timestamp, pm10, co, no2, position and sourceId as input.
+        # The rest should be calculated here.
+
+        zoneKey=self.request.get('zoneKey')
+        self.response.write("##########" + zoneKey)
             """
             Now, generate the report...
             1. Hitta ytterligare poster i samma zone
@@ -1034,8 +1051,8 @@ class RegisterRecord(webapp2.RequestHandler):
             myKey = db.Key.from_path('Report', zoneKey)
             rec = db.get(myKey)
             rec.report = zd.to_JSON()
-            rec.put()
-
+            rec.put()        
+    
 
 
 class Index(webapp2.RequestHandler):
@@ -1049,6 +1066,7 @@ class Index(webapp2.RequestHandler):
 
 app = webapp2.WSGIApplication([
         ('/worker', RegisterRecord),
+        ('/report', GenerateReport),
         ('/bot', Bot),
         ('/linkoping', Linkoping),
         ('/airnow', Airnow),
