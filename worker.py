@@ -1001,6 +1001,10 @@ class RegisterRecord(webapp2.RequestHandler):
                 report=zd.to_JSON()
             )
 
+            recordQuery = Records.all()
+            recordQuery.ancestor(reportDbRecord)
+            for photo in recordQuery.run(limit=5):
+    
             reportDbRecord.put()            
 
 
@@ -1057,7 +1061,6 @@ class GenerateReport(webapp2.RequestHandler):
         co=self.request.get('co')
         no2=self.request.get('no2')
         logging.info("########## GenerateReport " + zoneKey)
-        
 
         """ Create a list of all stations and history values """
         res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "'")
