@@ -907,55 +907,10 @@ class RegisterRecord(webapp2.RequestHandler):
             zoneSubTitle = locationContext.get('zoneSubTitle')
             country = locationContext.get('country')
             position = locationContext.get('position')
-
-            #print calendar.timegm(time.gmtime())
-            #print self.request.get('timestamp')
-
             timestamp = self.request.get('timestamp')
             if not timestamp:
                 timestamp = calendar.timegm(time.gmtime())
 
-            rec=Records(
-                timestamp=datetime.datetime.fromtimestamp(float(timestamp)),
-                pm10=pm10,
-                pm25=pm25,
-                o3=o3,
-                co=co,
-                no2=no2,
-                zoneKey=zoneKey,
-                # The index should be calculated here
-                #index=self.request.get('index'),
-                index=aqiValue,
-                # TODO: Do a lookup to google
-                position=self.request.get('position'),
-                positionLabels=zoneTitle,
-                sourceId=self.request.get('sourceId'),
-            )
-
-            rec.put()
-            
-
-            reportPostdata = {}
-            reportPostdata['zoneKey'] = zoneKey
-            taskqueue.add(url='/report', params=reportPostdata)
-            self.response.write(reportPostdata)
-
-            # Save data in fusion table.
-            scopes = ['https://www.googleapis.com/auth/fusiontables']
-            #credentials = ServiceAccountCredentials.from_json_keyfile_name('airupBackend-b120f4cbc1a7.json', scopes)
-            #credentials = ServiceAccountCredentials.from_json_keyfile_name('airupdata-297e9f1e1562.json', scopes)
-            #fusiontablesadmin = build('fusiontables', 'v2', credentials=credentials)
-            #fusiontablesadmin.query().sql(sql="INSERT INTO 1VQ8VQZwKY7zjrTqAxQTtlYdt18bjsbU7Gx4_nyK7 ('Source ID','index','Date','Pos') VALUES ('" + self.request.get('sourceId') + "', " + aqiValue + ", '" + datetime.datetime.fromtimestamp(float(timestamp)) + "', '" + self.request.get('position') + "') ").execute()
-
-
-class GenerateReport(webapp2.RequestHandler):
-    def post(self): # should run at most 1/s
-        # print "#1. Worker is registering "
-        # Only needs timestamp, pm10, co, no2, position and sourceId as input.
-        # The rest should be calculated here.
-
-        zoneKey=self.request.get('zoneKey')
-        self.response.write("##########" + zoneKey)
             """
             Now, generate the report...
             1. Hitta ytterligare poster i samma zone
@@ -1039,19 +994,153 @@ class GenerateReport(webapp2.RequestHandler):
             zd.min24Hr=1.0
             zd.max24Hr=1.0
 
-            rec = Report(
+            reportDbRecord = Report(
                 name=zoneTitle + " " + zoneSubTitle,
                 key_name=zoneKey,
                 zoneKey=zoneKey,
                 report=zd.to_JSON()
             )
 
+            reportDbRecord.put()            
+
+
+            rec=Records(
+                parent=reportDbRecord,
+                timestamp=datetime.datetime.fromtimestamp(float(timestamp)),
+                pm10=pm10,
+                pm25=pm25,
+                o3=o3,
+                co=co,
+                no2=no2,
+                zoneKey=zoneKey,
+                # The index should be calculated here
+                #index=self.request.get('index'),
+                index=aqiValue,
+                # TODO: Do a lookup to google
+                position=self.request.get('position'),
+                positionLabels=zoneTitle,
+                sourceId=self.request.get('sourceId'),
+            )
+
             rec.put()
 
-            myKey = db.Key.from_path('Report', zoneKey)
-            rec = db.get(myKey)
-            rec.report = zd.to_JSON()
-            rec.put()        
+            # Save data in fusion table.
+            # scopes = ['https://www.googleapis.com/auth/fusiontables']
+            #credentials = ServiceAccountCredentials.from_json_keyfile_name('airupBackend-b120f4cbc1a7.json', scopes)
+            #credentials = ServiceAccountCredentials.from_json_keyfile_name('airupdata-297e9f1e1562.json', scopes)
+            #fusiontablesadmin = build('fusiontables', 'v2', credentials=credentials)
+            #fusiontablesadmin.query().sql(sql="INSERT INTO 1VQ8VQZwKY7zjrTqAxQTtlYdt18bjsbU7Gx4_nyK7 ('Source ID','index','Date','Pos') VALUES ('" + self.request.get('sourceId') + "', " + aqiValue + ", '" + datetime.datetime.fromtimestamp(float(timestamp)) + "', '" + self.request.get('position') + "') ").execute()
+
+
+
+            # myKey = db.Key.from_path('Report', zoneKey)
+            # rec = db.get(myKey)
+            # rec.report = zd.to_JSON()
+            # rec.put()
+
+
+class GenerateReport(webapp2.RequestHandler):
+    def post(self): # should run at most 1/s
+        # print "#1. Worker is registering "
+        # Only needs timestamp, pm10, co, no2, position and sourceId as input.
+        # The rest should be calculated here.
+
+        zoneKey=self.request.get('zoneKey')
+        zoneTitle=self.request.get('zoneTitle')
+        zoneSubTitle=self.request.get('zoneSubTitle')
+        country=self.request.get('country')
+        position=self.request.get('position')
+
+        pm10=self.request.get('pm10')
+        pm25=self.request.get('pm25')
+        o3=self.request.get('o3')
+        co=self.request.get('co')
+        no2=self.request.get('no2')
+        logging.info("########## GenerateReport " + zoneKey)
+        
+
+        """ Create a list of all stations and history values """
+        res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "'")
+        avrIndex = 0
+        stationsDict = {}
+        historyDict = {}
+        indexArr = []
+        for r in res:
+            historyDate = r.timestamp.strftime('%Y-%m-%d')
+            indexArr = historyDict.get(historyDate, [0.0])
+            indexArr.append(r.index)
+            historyDict[historyDate] = indexArr
+            avrIndex = avrIndex + r.index
+            stationsDict[r.sourceId] = str(r.position)
+
+        stations = []
+        for key, value in stationsDict.iteritems():
+            temp = {}
+            temp["sourceId"] = key
+            temp["position"] = value
+
+            stations.append(temp)
+
+        """ Add a proper locale. For now all languages are english """
+        class Location(): pass
+        location = Location()
+        location.country=country.upper()
+        location.language="en"
+        
+        """ Create a array of history records. Each record contains the date and the index for that date.  """
+        historyArr = []
+        class HistoricDate():
+            def __init__(self, dict):
+                self.__dict__ = dict
+
+        for key, value in historyDict.iteritems():
+            historyArr.append(HistoricDate({'date' : key, 'index':reduce(lambda x, y: x + y, value) / (len(value)-1)}))
+
+        """ Create the zone-detail object that will be persisted as a report for use in the zones API """
+        class ZoneDetail():
+            def to_JSON(self):
+                return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True)
+
+        zd = ZoneDetail()
+        zd.zoneKey=zoneKey
+        zd.title=zoneTitle
+        zd.subtitle=zoneSubTitle
+        zd.stations=stations
+        try:
+            zd.numberOfMeasurements=str(res.count())
+            if res.count() > 0:
+                zd.index=avrIndex/res.count()
+            else:
+                zd.index=float(res[0].index)
+        except Exception, e:
+            print "numberOfMeasurements and index set to 0"
+            zd.numberOfMeasurements = 0
+            zd.index = 0
+
+        zd.co=co
+        zd.no2=no2
+        zd.pm10=pm10
+        zd.pm25=pm25
+        zd.o3=o3
+        zd.location=location
+        zd.position=position
+        zd.history=historyArr
+        zd.min24Hr=1.0
+        zd.max24Hr=1.0
+
+        rec = Report(
+            name=zoneTitle + " " + zoneSubTitle,
+            key_name=zoneKey,
+            zoneKey=zoneKey,
+            report=zd.to_JSON()
+        )
+
+        rec.put()
+
+        myKey = db.Key.from_path('Report', zoneKey)
+        rec = db.get(myKey)
+        rec.report = zd.to_JSON()
+        rec.put()        
     
 
 
