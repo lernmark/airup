@@ -864,7 +864,9 @@ class RegisterRecord(webapp2.RequestHandler):
         # Only needs timestamp, pm10, co, no2, position and sourceId as input.
         # The rest should be calculated here.
         
-        logging.info("### RECORD SOURCEID " + self.request.get('sourceId'))
+        sourceId = self.request.get('sourceId')
+        
+        logging.info("### RECORD SOURCEID " + sourceId)
 
         pm10=self.request.get('pm10')
         pm25=self.request.get('pm25')
