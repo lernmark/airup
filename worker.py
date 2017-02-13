@@ -933,12 +933,12 @@ class RegisterRecord(webapp2.RequestHandler):
 
             """ Get the data newer than 1 hour """
             #res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "' AND timestamp >= :1", datetime.datetime.now() - datetime.timedelta(hours = 6))
-            res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "'")
+            #res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "'")
             
             recordQuery = Records.all()
             
             recordQuery.ancestor(reportDbRecord)
-            for rrr in recordQuery.run(limit=5):
+            for rrr in recordQuery.run():
                 logging.info("### RECORD " + rrr.sourceId)            
 
 
