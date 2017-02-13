@@ -33,6 +33,11 @@ Data from http://luft.hamburg.de/
 EAA
 http://fme.discomap.eea.europa.eu/fmedatastreaming/AirQuality/AirQualityUTDExport.fmw?FromDate=2015-03-17&ToDate=2015-03-17&Countrycode=se&InsertedSinceDate=&UpdatedSinceDate=&Pollutant=PM10,SO2,NO2,CO&Namespace=&Format=XML&UserToken=6C2D03D8-04E1-4D07-B856-D92ACE0FA832
 """
+
+"""
+Deploy:
+git add . && git commit -m 'Some stuff' && git push && gcloud -q app deploy --version=primary
+"""
 import sys
 sys.path.insert(0, 'libs')
 import os
@@ -1005,7 +1010,7 @@ class RegisterRecord(webapp2.RequestHandler):
             
             recordQuery.ancestor(reportDbRecord)
             for rrr in recordQuery.run(limit=5):
-                logging.info("### RECORD " + rrr)
+                logging.info("### RECORD " + rrr.index)
                     
             reportDbRecord.put()
 
