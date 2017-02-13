@@ -924,10 +924,22 @@ class RegisterRecord(webapp2.RequestHandler):
             4. spara historiska data
             5. Berakna min24hr och max 24hr
             """
+            
+            reportDbRecord = Report(
+                name=zoneTitle + " " + zoneSubTitle,
+                key_name=zoneKey,
+                zoneKey=zoneKey
+            )            
 
             """ Get the data newer than 1 hour """
             #res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "' AND timestamp >= :1", datetime.datetime.now() - datetime.timedelta(hours = 6))
             res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "'")
+            
+            recordQuery = Records.all()
+            
+            recordQuery.ancestor(reportDbRecord)
+            for rrr in recordQuery.run(limit=5):
+                logging.info("### RECORD " + rrr.sourceId)            
 
 
             """ Create a list of all stations and history values """
@@ -935,7 +947,7 @@ class RegisterRecord(webapp2.RequestHandler):
             stationsDict = {}
             historyDict = {}
             indexArr = []
-            for r in res:
+            for r in recordQuery.run(limit=5):
                 historyDate = r.timestamp.strftime('%Y-%m-%d')
                 indexArr = historyDict.get(historyDate, [0.0])
                 indexArr.append(r.index)
@@ -999,19 +1011,15 @@ class RegisterRecord(webapp2.RequestHandler):
             zd.min24Hr=1.0
             zd.max24Hr=1.0
 
-            reportDbRecord = Report(
-                name=zoneTitle + " " + zoneSubTitle,
-                key_name=zoneKey,
-                zoneKey=zoneKey,
-                report=zd.to_JSON()
-            )
+
+
             
             recordQuery = Records.all()
-            
             recordQuery.ancestor(reportDbRecord)
             for rrr in recordQuery.run(limit=5):
                 logging.info("### RECORD " + rrr.sourceId)
                     
+            reportDbRecord.report=zd.to_JSON()
             reportDbRecord.put()
 
             rec=Records(
