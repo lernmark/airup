@@ -940,9 +940,6 @@ class RegisterRecord(webapp2.RequestHandler):
             recordQuery.ancestor(reportDbRecord)
             res =  recordQuery.run()
             logging.info(" ### COUNT " + str(res.count()))
-            for rrr in res:
-                          
-
 
             """ Create a list of all stations and history values """
             avrIndex = 0
