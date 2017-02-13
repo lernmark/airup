@@ -865,8 +865,7 @@ class RegisterRecord(webapp2.RequestHandler):
         # The rest should be calculated here.
         
         sourceId = self.request.get('sourceId')
-        
-        logging.info("### RECORD SOURCEID " + sourceId)
+        logging.info("RECORD SOURCEID " + sourceId)
 
         pm10=self.request.get('pm10')
         pm25=self.request.get('pm25')
@@ -913,6 +912,7 @@ class RegisterRecord(webapp2.RequestHandler):
             locationContext = getLocationContext(latlng)
             
             if (locationContext is None):
+                logging.warn("LocationContext returned none... " + sourceId + " latlng: " + latlng)
                 return None
                 
             zoneKey = locationContext.get('zoneKey')
