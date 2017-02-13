@@ -141,6 +141,7 @@ class Airnow(webapp2.RequestHandler):
         print url
         self.response.write(url)
 
+        urlfetch.set_default_fetch_deadline(600)
         headers = {'Accept':'application/json;charset=UTF-8','Content-Type':'application/json'}
         result = urlfetch.fetch(
             url,
