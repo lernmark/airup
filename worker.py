@@ -939,8 +939,9 @@ class RegisterRecord(webapp2.RequestHandler):
             
             recordQuery.ancestor(reportDbRecord)
             res =  recordQuery.run()
+            logging.info(" ### COUNT " + str(res.count()))
             for rrr in res:
-                logging.info("### RECORD " + rrr.sourceId)            
+                          
 
 
             """ Create a list of all stations and history values """
@@ -948,7 +949,8 @@ class RegisterRecord(webapp2.RequestHandler):
             stationsDict = {}
             historyDict = {}
             indexArr = []
-            for r in recordQuery.run(limit=5):
+            for r in res:
+                logging.info("### RECORD SOURCEID " + r.sourceId)
                 historyDate = r.timestamp.strftime('%Y-%m-%d')
                 indexArr = historyDict.get(historyDate, [0.0])
                 indexArr.append(r.index)
