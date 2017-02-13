@@ -139,7 +139,7 @@ class Airnow(webapp2.RequestHandler):
         url = "http://www.airnowapi.org/aq/data/?startDate=" + isotoday + "T" + str(hour) + "&endDate=" + isotoday + "T" + str(hour+1) + "&parameters=O3,PM25,PM10,CO,NO2&BBOX=-124.205070,28.716781,-75.337882,45.419415&dataType=B&format=application/json&verbose=0&API_KEY=0A8FF804-8227-4C80-A150-A495616F30DB"
         #url = "http://www.airnowapi.org/aq/data/?startDate=2016-05-15T22&endDate=2016-05-15T23&parameters=PM25,PM10&BBOX=-116.938171,27.476288,-73.520203,43.154850&dataType=B&format=application/json&verbose=0&API_KEY=0A8FF804-8227-4C80-A150-A495616F30DB"
         print url
-        #self.response.write(url)
+        self.response.write(url)
 
         headers = {'Accept':'application/json;charset=UTF-8','Content-Type':'application/json'}
         result = urlfetch.fetch(
@@ -155,6 +155,8 @@ class Airnow(webapp2.RequestHandler):
                 #{u'Category': 1, u'Longitude': -123.64835, u'UTC': u'2016-05-15T22:00', u'Parameter': u'PM2.5', u'AQI': 7, u'Latitude': 42.1617, u'Value': 1.6, u'Unit': u'UG/M3'},
                 lat = obj['Latitude']
                 lon = obj['Longitude']
+                self.response.write("<p>" + lat + " - " + lon + "</p>")
+
                 position = str(lat) + "," + str(lon)
                 sourceId = "AirNow" + hashlib.md5(position.encode('ascii', 'ignore').decode('ascii')).hexdigest()
                 parameter = obj['Parameter']
@@ -378,7 +380,7 @@ class Hamburg1(webapp2.RequestHandler):
             #postdata['position'] = position
 
             self.response.write("<br/><code>DONE " + sourceId + "<code><br/>")
-            taskqueue.add(url='/worker', params=postdata)
+            taskqueue.add(url='/worker?sourceId=' + sourceId, params=postdata)
 
         """
         Data from http://luft.hamburg.de/
