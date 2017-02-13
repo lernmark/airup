@@ -1010,7 +1010,7 @@ class RegisterRecord(webapp2.RequestHandler):
             
             recordQuery.ancestor(reportDbRecord)
             for rrr in recordQuery.run(limit=5):
-                logging.info("### RECORD " + rrr.index)
+                logging.info("### RECORD " + rrr.sourceId)
                     
             reportDbRecord.put()
 
