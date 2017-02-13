@@ -1000,13 +1000,14 @@ class RegisterRecord(webapp2.RequestHandler):
                 zoneKey=zoneKey,
                 report=zd.to_JSON()
             )
-
+            
             recordQuery = Records.all()
+            
             recordQuery.ancestor(reportDbRecord)
-            for photo in recordQuery.run(limit=5):
-    
-            reportDbRecord.put()            
-
+            for rrr in recordQuery.run(limit=5):
+                logging.info("### RECORD " + rrr)
+                    
+            reportDbRecord.put()
 
             rec=Records(
                 parent=reportDbRecord,
