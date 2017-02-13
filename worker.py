@@ -938,7 +938,8 @@ class RegisterRecord(webapp2.RequestHandler):
             recordQuery = Records.all()
             
             recordQuery.ancestor(reportDbRecord)
-            for rrr in recordQuery.run():
+            res =  recordQuery.run()
+            for rrr in res:
                 logging.info("### RECORD " + rrr.sourceId)            
 
 
@@ -1014,10 +1015,10 @@ class RegisterRecord(webapp2.RequestHandler):
 
 
             
-            recordQuery = Records.all()
-            recordQuery.ancestor(reportDbRecord)
-            for rrr in recordQuery.run(limit=5):
-                logging.info("### RECORD " + rrr.sourceId)
+            # recordQuery = Records.all()
+            # recordQuery.ancestor(reportDbRecord)
+            # for rrr in recordQuery.run(limit=5):
+            #     logging.info("### RECORD " + rrr.sourceId)
                     
             reportDbRecord.report=zd.to_JSON()
             reportDbRecord.put()
