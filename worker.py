@@ -340,7 +340,7 @@ class Eaa(webapp2.RequestHandler):
                 postdata['position'] = posy + "," + posx
                 postdata[getText(pollutant.childNodes).lower()] = str(getText(value_numeric.childNodes))
                 self.response.write(postdata)
-                taskqueue.add(url='/worker?station='+station_code, params=postdata)
+                taskqueue.add(url='/worker', params=postdata)
 
 
         country = self.request.get('country')
@@ -388,7 +388,7 @@ class Hamburg1(webapp2.RequestHandler):
             #postdata['position'] = position
 
             self.response.write("<br/><code>DONE " + sourceId + "<code><br/>")
-            taskqueue.add(url='/worker?sourceId=' + sourceId, params=postdata)
+            taskqueue.add(url='/worker', params=postdata)
 
         """
         Data from http://luft.hamburg.de/
