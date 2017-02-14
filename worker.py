@@ -37,6 +37,10 @@ http://fme.discomap.eea.europa.eu/fmedatastreaming/AirQuality/AirQualityUTDExpor
 """
 Deploy:
 git add . && git commit -m 'Some stuff' && git push && gcloud -q app deploy --version=primary
+
+update cron: 
+gcloud app deploy cron.yaml
+
 """
 import sys
 sys.path.insert(0, 'libs')
@@ -336,7 +340,7 @@ class Eaa(webapp2.RequestHandler):
                 postdata['position'] = posy + "," + posx
                 postdata[getText(pollutant.childNodes).lower()] = str(getText(value_numeric.childNodes))
                 self.response.write(postdata)
-                taskqueue.add(url='/worker', params=postdata)
+                taskqueue.add(url='/worker?station='+station_code, params=postdata)
 
 
         country = self.request.get('country')
