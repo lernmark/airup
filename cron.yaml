@@ -60,3 +60,12 @@ cron:
 - description: Import data from EAA
   url: /eaa?country=ie
   schedule: every 800 minutes
+- description: Import data from EAA
+  url: /eaa?country=be
+  schedule: every 750 minutes
+- description: Import data from EAA
+  url: /eaa?country=hu
+  schedule: every 761 minutes
+- description: Import data from EAA
+  url: /eaa?country=cz
+  schedule: every 769 minutes
