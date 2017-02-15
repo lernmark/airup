@@ -198,7 +198,8 @@ class Linkoping(webapp2.RequestHandler):
             postdata = {}
             time = dataLatest["time"]
             pm = dataLatest["value"]
-            postdata['sourceId'] = "Linkoping-hamngatan-nods"
+            sourceId = "Linkoping-hamngatan-nods"
+            postdata['sourceId'] = sourceId
             postdata['position'] = "58.408413,15.631572"
             postdata['pm10'] = str(pm)
             taskqueue.add(url='/worker', params=postdata)
@@ -335,8 +336,8 @@ class Eaa(webapp2.RequestHandler):
                 value_numeric = rec.getElementsByTagName("value_numeric")[0]
                 posx = samplingpoint_point.attributes['x'].value
                 posy = samplingpoint_point.attributes['y'].value
-
-                postdata['sourceId'] = "EAA-"+getText(station_code.childNodes)
+                sourceId = "EAA-"+getText(station_code.childNodes)
+                postdata['sourceId'] = sourceId
                 postdata['position'] = posy + "," + posx
                 postdata[getText(pollutant.childNodes).lower()] = str(getText(value_numeric.childNodes))
                 self.response.write(postdata)
@@ -406,9 +407,9 @@ class Goteborg(webapp2.RequestHandler):
         url = "http://data.goteborg.se/AirQualityService/v1.0/LatestMeasurement/4abad3dd-5d24-4c9c-9d17-79a946abe6c2?format=json"
         response = urllib2.urlopen(url);
         data = json.loads(response.read())
-
+        sourceId = "GBG1"
         postdata = {
-            'sourceId': 'GBG1',
+            'sourceId': sourceId,
             'position': '57.708870,11.974560',
             'pm10': '',
             'pm25': '',
@@ -527,9 +528,9 @@ class Umea(webapp2.RequestHandler):
     		no2 = 0
 
         no2str = str(((no2/1000.0000)*24.4500)/46.0100)
-
+        sourceId = 'UMEA1'
         payload = {
-            'sourceId': 'UMEA1',
+            'sourceId': sourceId,
             'position': '63.827743,20.256825',
             'pm10': pm10str,
             'pm25': '',
@@ -867,8 +868,6 @@ TODO:
     2. Should not have to store the indexLabel. A dictionary will be included in the ZoneMessage.
 """
 class RegisterRecord(webapp2.RequestHandler):
-
-
     def post(self): # should run at most 1/s
         # print "#1. Worker is registering "
         # Only needs timestamp, pm10, co, no2, position and sourceId as input.
@@ -1083,7 +1082,6 @@ class Index(webapp2.RequestHandler):
 		}
 		template = JINJA_ENVIRONMENT.get_template('index.html')
 		self.response.write(template.render(template_values))
-
 
 app = webapp2.WSGIApplication([
         ('/worker', RegisterRecord),
