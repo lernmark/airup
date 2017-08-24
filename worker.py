@@ -38,7 +38,7 @@ http://fme.discomap.eea.europa.eu/fmedatastreaming/AirQuality/AirQualityUTDExpor
 Deploy:
 git add . && git commit -m 'Some stuff' && git push && gcloud -q app deploy --version=primary
 
-update cron: 
+update cron:
 gcloud app deploy cron.yaml
 
 """
@@ -79,7 +79,8 @@ from bs4 import BeautifulSoup
 #import requests
 
 #GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyDTr4jvDt3ZM1Nv68mMR_mcw8TxyQV7x5k&latlng=%s"
-GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyAZQS_TBcZ2XNhApQttypDRarDWcy_phG4&latlng=%s"
+#GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyAZQS_TBcZ2XNhApQttypDRarDWcy_phG4&latlng=%s"
+GEOLOCATION_URL = "https://maps.googleapis.com/maps/api/geocode/json?language=en&key=AIzaSyARol6K2Sw3XXdOpW9J1_uHVcEDNESCx1Y&latlng=%s"
 
 # http://apis-explorer.appspot.com/apis-explorer/?base=http://localhost:8080/_ah/api#p/
 
@@ -160,11 +161,11 @@ class Airnow(webapp2.RequestHandler):
                 #{u'Category': 1, u'Longitude': -123.64835, u'UTC': u'2016-05-15T22:00', u'Parameter': u'PM2.5', u'AQI': 7, u'Latitude': 42.1617, u'Value': 1.6, u'Unit': u'UG/M3'},
                 lat = obj['Latitude']
                 lon = obj['Longitude']
-                
+
 
                 position = str(lat) + "," + str(lon)
-                
-                
+
+
                 sourceId = "AirNow" + hashlib.md5(position.encode('ascii', 'ignore').decode('ascii')).hexdigest()
                 self.response.write("<p>" + sourceId + " - " + position + "</p>")
                 parameter = obj['Parameter']
@@ -315,6 +316,7 @@ class Eaa(webapp2.RequestHandler):
         def regData(country):
             isotoday = datetime.datetime.now().date().isoformat()
             url = "http://fme.discomap.eea.europa.eu/fmedatastreaming/AirQuality/AirQualityUTDExport.fmw?FromDate=" + isotoday + "&ToDate=" + isotoday + "&Countrycode=" + country + "&InsertedSinceDate=&UpdatedSinceDate=&Pollutant=PM10&Namespace=&Format=XML&UserToken=6C2D03D8-04E1-4D07-B856-D92ACE0FA832"
+            print "EAA URL: " url
             response = urllib2.urlopen(url, timeout = 90)
             xmldoc = minidom.parse(response)
             records = xmldoc.getElementsByTagName('record')
@@ -774,6 +776,7 @@ def getGeoValue(latlng, keys, valueType):
     #"123,123", "[country]", "short_name"
 
     url=GEOLOCATION_URL % latlng
+    print "getGeoValue url: " + url
     data = memcache.get(latlng)
     if data is None:
         print "getGeoValue - Data for " + latlng + " not in cache. Reading from API..."
@@ -798,6 +801,7 @@ def getGeoValue(latlng, keys, valueType):
 
 def getGeoFormattedAddress(latlng, keys):
     url=GEOLOCATION_URL % latlng
+    print "getGeoFormattedAddress url: " + url
     data = memcache.get(latlng)
     if data is None:
         #print "getGeoFormattedAddress - Data for " + latlng + " not in cache. Reading from API..."
@@ -813,6 +817,7 @@ def getGeoFormattedAddress(latlng, keys):
 
 def getGeoPosition(latlng, keys):
     url=GEOLOCATION_URL % latlng
+    print "getGeoPosition url: " + url
     data = memcache.get(latlng)
     if data is None:
         print "getGeoPosition - Data for " + latlng + " not in cache. Reading from API..."
@@ -828,20 +833,26 @@ def getGeoPosition(latlng, keys):
 
 def getLocationContext(latlng):
     context = {}
+    print "getLocationContext: " + latlng
     keyList = ["neighborhood","sublocality_level_2","sublocality_level_1","administrative_area_level_3","colloquial_area","postal_code"]
     try:
         addrString = getGeoFormattedAddress(latlng, keyList).encode("utf-8")
+        print "getLocationContext addrString: " + addrString
         hoodPosition = getGeoPosition(latlng, keyList)
+        print "getLocationContext hoodPosition: " + hoodPosition
+
         addrList = addrString.split(", ")
         zoneTitle = addrList[0].decode("utf-8","ignore")
+        print "getLocationContext zoneTitle: " + zoneTitle
         addrList.remove(addrList[0])
         addrList.remove(addrList[-1])
         zoneSubTitle = ", ".join(addrList).decode("utf-8")
-    
+        print "getLocationContext zoneSubTitle: " + zoneSubTitle
+
         country = getGeoValue(latlng, ["country"], "short_name")
         if country is None:
             return None
-    
+
         context["zoneTitle"] = zoneTitle
         context["zoneSubTitle"] = zoneSubTitle
         context["country"] = country
@@ -849,6 +860,7 @@ def getLocationContext(latlng):
         context["position"] = hoodPosition
         return context
     except Exception, e:
+        print "getLocationContext - " + str(e)
         return None
 
 def generateZoneKey(zoneTitle,zoneSubTitle,country):
@@ -872,7 +884,7 @@ class RegisterRecord(webapp2.RequestHandler):
         # print "#1. Worker is registering "
         # Only needs timestamp, pm10, co, no2, position and sourceId as input.
         # The rest should be calculated here.
-        
+
         sourceId = self.request.get('sourceId')
         logging.info("RECORD SOURCEID " + sourceId)
 
@@ -918,12 +930,14 @@ class RegisterRecord(webapp2.RequestHandler):
 
             latlng = self.request.get('position')
 
+            print "RegisterRecord latlng" + latlng
+
             locationContext = getLocationContext(latlng)
-            
+
             if (locationContext is None):
                 logging.warn("LocationContext returned none... " + sourceId + " latlng: " + latlng)
                 return None
-                
+
             zoneKey = locationContext.get('zoneKey')
             zoneTitle = locationContext.get('zoneTitle')
             zoneSubTitle = locationContext.get('zoneSubTitle')
@@ -941,17 +955,17 @@ class RegisterRecord(webapp2.RequestHandler):
             4. spara historiska data
             5. Berakna min24hr och max 24hr
             """
-            
+
             reportDbRecord = Report(
                 name=zoneTitle + " " + zoneSubTitle,
                 key_name=zoneKey,
                 zoneKey=zoneKey
-            )            
+            )
 
             """ Get the data newer than 1 hour """
             #res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "' AND timestamp >= :1", datetime.datetime.now() - datetime.timedelta(hours = 6))
             #res = db.GqlQuery("SELECT * FROM Records WHERE zoneKey='" + zoneKey + "'")
-            
+
             recordQuery = Records.all()
             recordQuery.ancestor(reportDbRecord)
 
@@ -1030,12 +1044,12 @@ class RegisterRecord(webapp2.RequestHandler):
 
 
 
-            
+
             # recordQuery = Records.all()
             # recordQuery.ancestor(reportDbRecord)
             # for rrr in recordQuery.run(limit=5):
             #     logging.info("### RECORD " + rrr.sourceId)
-                    
+
             reportDbRecord.report=zd.to_JSON()
             reportDbRecord.put()
 
